@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 2013
+VisualStudioVersion = 12.0.21005.1
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "itcVideoCapture", "itcVideoCapture\itcVideoCapture.vcxproj", "{B34445F7-2FBA-491E-93D2-3A0E06C5E43E}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		CD_ROM|Win32 = CD_ROM|Win32
+		Debug|Win32 = Debug|Win32
+		DVD-5|Win32 = DVD-5|Win32
+		Release|Win32 = Release|Win32
+		SingleImage|Win32 = SingleImage|Win32
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{B34445F7-2FBA-491E-93D2-3A0E06C5E43E}.CD_ROM|Win32.ActiveCfg = Release|Win32
+		{B34445F7-2FBA-491E-93D2-3A0E06C5E43E}.CD_ROM|Win32.Build.0 = Release|Win32
+		{B34445F7-2FBA-491E-93D2-3A0E06C5E43E}.Debug|Win32.ActiveCfg = Debug|Win32
+		{B34445F7-2FBA-491E-93D2-3A0E06C5E43E}.Debug|Win32.Build.0 = Debug|Win32
+		{B34445F7-2FBA-491E-93D2-3A0E06C5E43E}.DVD-5|Win32.ActiveCfg = Debug|Win32
+		{B34445F7-2FBA-491E-93D2-3A0E06C5E43E}.DVD-5|Win32.Build.0 = Debug|Win32
+		{B34445F7-2FBA-491E-93D2-3A0E06C5E43E}.Release|Win32.ActiveCfg = Release|Win32
+		{B34445F7-2FBA-491E-93D2-3A0E06C5E43E}.Release|Win32.Build.0 = Release|Win32
+		{B34445F7-2FBA-491E-93D2-3A0E06C5E43E}.SingleImage|Win32.ActiveCfg = Release|Win32
+		{B34445F7-2FBA-491E-93D2-3A0E06C5E43E}.SingleImage|Win32.Build.0 = Release|Win32
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal
