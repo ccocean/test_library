@@ -368,23 +368,24 @@ static int tch_analyzeOutside(Tch_Data_t *data, TeaITRACK_Params *params)
 		{
 			//tch_updateTargetRcd(data, i, REMOVE);
 			
-			if (data->g_lastTarget[i].start!=1)
-			{
-				data->g_lastTarget[i].end++;
-				if (data->g_lastTarget[i].end > OUTSIDE_THRSHLD)
-				{
-					//TCH_PRINTF("Remove No.%d!\r\n", i);
-					tch_updateTargetRcd(data, i, REMOVE);
-					cnt++;
-				}
-			}
-			
-			//if (data->g_lastTarget[i].end>OUTSIDE_THRSHLD)
+			//if (data->g_lastTarget[i].start!=1)
 			//{
-			//	//TCH_PRINTF("Remove No.%d!\r\n", i);
-			//	tch_updateTargetRcd(data, i, REMOVE);
-			//	cnt++;
+			//	data->g_lastTarget[i].end++;
+			//	if (data->g_lastTarget[i].end > OUTSIDE_THRSHLD)
+			//	{
+			//		//TCH_PRINTF("Remove No.%d!\r\n", i);
+			//		tch_updateTargetRcd(data, i, REMOVE);
+			//		cnt++;
+			//	}
 			//}
+
+			data->g_lastTarget[i].end++;
+			if (data->g_lastTarget[i].end > OUTSIDE_THRSHLD)
+			{
+				//TCH_PRINTF("Remove No.%d!\r\n", i);
+				tch_updateTargetRcd(data, i, REMOVE);
+				cnt++;
+			}
 		}
 		else
 		{
@@ -476,7 +477,7 @@ static void tch_mergeRects(Tch_Data_t *data)
 	int flag = 0;
 	int maxArea=0, index;
 	Track_Rect_t temp;
-	/*for (i = 0; i < data->lastRectNum;i++)
+	for (i = 0; i < data->lastRectNum;i++)
 	{
 		Track_Rect_t maxRect;
 		
@@ -501,9 +502,9 @@ static void tch_mergeRects(Tch_Data_t *data)
 			i--;
 			maxArea = 0;
 		}
-	}*/
+	}
 
-	for (i = 0; i < data->lastRectNum; i++)
+	/*for (i = 0; i < data->lastRectNum; i++)
 	{
 		Track_Rect_t maxRect;
 		for (j = 0; j < data->lastRectNum; j++)
@@ -535,7 +536,7 @@ static void tch_mergeRects(Tch_Data_t *data)
 			i--;
 			maxArea = 0;
 		}
-	}
+	}*/
 }
 
 static int tch_matchRects(Track_Rect_t *current, int num, Tch_Data_t *data, TeaITRACK_Params *params)
@@ -612,10 +613,10 @@ static int tch_matchRects(Track_Rect_t *current, int num, Tch_Data_t *data, TeaI
 			if (maxArea>0)
 			{
 				TCH_PRINTF("match No.%d!\r\n",index);
-				if (current[j].y<params->threshold.outside&&data->g_lastTarget[index].start==1)
+				/*if (current[j].y<params->threshold.outside&&data->g_lastTarget[index].start==1)
 				{
 					data->g_lastTarget[index].start = 0;
-				}
+				}*/
 				data->g_lastTarget[index].rect = current[j];
 				tch_updateTimer(&data->g_lastTarget[i].timer, RESET);
 				maxArea = 0;
@@ -624,12 +625,15 @@ static int tch_matchRects(Track_Rect_t *current, int num, Tch_Data_t *data, TeaI
 			{
 				if (data->lastRectNum < MAX_TARGET)
 				{
-					if (current[j].y>params->threshold.outside)
+					/*if (current[j].y>params->threshold.outside)
 					{
 						TCH_PRINTF("add new!\r\n");
 						data->g_lastTarget[data->lastRectNum].rect = current[j];
 						tch_updateTargetRcd(data, -1, ADD);
-					}
+					}*/
+					TCH_PRINTF("add new!\r\n");
+					data->g_lastTarget[data->lastRectNum].rect = current[j];
+					tch_updateTargetRcd(data, -1, ADD);
 				}
 				
 			}
