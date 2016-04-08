@@ -662,9 +662,9 @@ DWORD WINAPI CitcVideoCaptureDlg::imageProcessThread(LPVOID pParam)
 	memset(arg, 0, sizeof(TeaITRACK_Params));
 	arg->isSetParams = 1;
 	Tch_Size_t _frame = { 480, 264 };
-	Tch_Rect_t tch = { 0, 75, WIDTH_STUTRACK_IMG_, 82 };//{0,75,480,150}
-	Tch_Rect_t blk = { 273, 35, 203, 35 }; //{0, 35, 640, 50}
-	Tch_Threshold_t threshold = { 2000, 1500, 55 };//{2000, 12000, 130}
+	Tch_Rect_t tch = { 0, 58, WIDTH_STUTRACK_IMG_, 150 };//{0,75,480,150}
+	Tch_Rect_t blk = { 243, 18, 175, 38 }; //{0, 35, 640, 50}
+	Tch_Threshold_t threshold = { 2000, 1500, 90 };//{2000, 12000, 130}
 	arg->blk = blk;
 	arg->tch = tch;
 	arg->threshold = threshold;

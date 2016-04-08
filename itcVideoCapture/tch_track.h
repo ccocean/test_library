@@ -87,6 +87,18 @@ typedef struct FromSystem
 	callbackmsg callbackmsg_func;
 }Tch_SysData_t;
 
+typedef struct TrackTarget
+{
+	Track_Rect_t rect;
+	Tch_Timer_t timer;
+	int start;
+	int end;
+	unsigned long o_start;//original time
+	int o_x;//original x
+	int o_width;
+}Tch_Traget_t;
+
+#define MAX_TARGET 10
 
 typedef struct Data
 {
@@ -114,7 +126,8 @@ typedef struct Data
 	Track_Size_t src_size;	//原始图像大小
 	Track_Rect_t g_tchWin;  //处理教师的图片大小
 	Track_Rect_t g_blkWin;
-	Track_Rect_t g_lastTarget[10];//上一次的目标
+	//Track_Rect_t g_lastTarget[10];//上一次的目标
+	Tch_Traget_t g_lastTarget[MAX_TARGET];
 
 	//Itc_Mat_t *srcMat;
 	Itc_Mat_t *tempMatTch;

@@ -43,8 +43,8 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <LinkIncremental>true</LinkIncremental>
-    <IncludePath>C:\OpenCV249\install\include\;$(IncludePath)</IncludePath>
-    <LibraryPath>C:\OpenCV249\install\x86\vc12\lib;$(LibraryPath)</LibraryPath>
+    <IncludePath>C:\OpenCV\install\include\;$(IncludePath)</IncludePath>
+    <LibraryPath>C:\OpenCV\install\x86\vc12\lib;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>

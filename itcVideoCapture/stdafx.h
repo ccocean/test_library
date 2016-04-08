@@ -47,16 +47,16 @@
 //using namespace std;
 
 #ifdef _DEBUG
-#pragma comment(lib,"opencv_contrib249d.lib")
-#pragma comment(lib,"opencv_core249d.lib")
-#pragma comment(lib,"opencv_highgui249d.lib")
-#pragma comment(lib,"opencv_imgproc249d.lib")
-#pragma comment(lib,"opencv_legacy249d.lib")
-#pragma comment(lib,"opencv_calib3d249d.lib")
-#pragma comment(lib,"opencv_features2d249d.lib")
-#pragma comment(lib,"opencv_flann249d.lib")
-#pragma comment(lib, "opencv_objdetect249d.lib")
-#pragma comment(lib, "opencv_video249d.lib")
+//#pragma comment(lib,"opencv_contrib310d.lib")
+#pragma comment(lib,"opencv_core310d.lib")
+#pragma comment(lib,"opencv_highgui310d.lib")
+#pragma comment(lib,"opencv_imgproc310d.lib")
+//#pragma comment(lib,"opencv_legacy310d.lib")
+#pragma comment(lib,"opencv_calib3d310d.lib")
+#pragma comment(lib,"opencv_features2d310d.lib")
+#pragma comment(lib,"opencv_flann310d.lib")
+#pragma comment(lib, "opencv_objdetect310d.lib")
+#pragma comment(lib, "opencv_video310d.lib")
 #endif
 #ifndef _DEBUG
 #pragma comment(lib,"opencv_contrib249.lib")
