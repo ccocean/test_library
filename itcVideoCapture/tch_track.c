@@ -346,7 +346,7 @@ static int tch_isBlackBoard(int numBlk, int numTch, Track_Rect_t *rectBlk, Track
 				drawRect.y = rectTch[0].y + data->g_tchWin.y;
 				drawRect.width = rectTch[0].width;
 				drawRect.height = rectTch[0].height;
-				tchTrack_drawShow_imgData(data, src, pUV, &drawRect, &data->yellow_colour);
+				//tchTrack_drawShow_imgData(data, src, pUV, &drawRect, &data->yellow_colour);
 				tch_updateFeatureRect(data);
 			}
 		}
@@ -698,23 +698,6 @@ static void tch_updateTargetRcd(Tch_Data_t *data, int index, int type)
 	}
 }
 
-static void checkCount(Tch_Data_t *data)
-{
-	int i;
-	int cnt = 0;
-	for (i = 0; i < data->lastRectNum; i++)
-	{
-		if (data->g_lastTarget[i].rect.width>0)
-		{
-			cnt++;
-		}
-	}
-	if (cnt!=data->lastRectNum)
-	{
-		TCH_PRINTF("count error!");
-	}
-}
-
 static int tch_noneTarget(Tch_Data_t *data, TeaITRACK_Params *params, Tch_Result_t *res, itc_uchar *src, itc_uchar* pUV)
 {
 	int isChange;
@@ -1028,7 +1011,6 @@ static void tch_updatePosition(Tch_Data_t *data)
 }
 
 
-
 #define TRACK_OUTSIDE_TIME 5000
 int tch_track(itc_uchar *src, itc_uchar* pUV, TeaITRACK_Params *params, Tch_Data_t *data, Tch_Result_t *res)
 {
@@ -1114,6 +1096,19 @@ int tch_track(itc_uchar *src, itc_uchar* pUV, TeaITRACK_Params *params, Tch_Data
 			data->tch_lastStatus = RETURN_TRACK_TCH_BLACKBOARD;
 			res->pos = data->pos_slide.center + PRESET_ALIGN;
 			isChange = tch_return_maintain(&data->tch_timer, isChange);
+
+			Track_Rect_t drawRect;
+
+			for (i = 0; i < data->lastRectNum; i++)
+			{
+				drawRect.x = data->g_lastTarget[i].rect.x + data->g_tchWin.x;
+				drawRect.y = data->g_lastTarget[i].rect.y + data->g_tchWin.y;
+				drawRect.width = data->g_lastTarget[i].rect.width;
+				drawRect.height = data->g_lastTarget[i].rect.height;
+				tch_updateTimer(&data->g_lastTarget[i].timer, UPDATE);
+				tchTrack_drawShow_imgData(data, src, pUV, &drawRect, &data->yellow_colour);
+			}
+
 			return isChange;
 		}
 		else
