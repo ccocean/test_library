@@ -19,7 +19,7 @@ static int tch_noneTarget(Tch_Data_t *data, TeaITRACK_Params *params, Tch_Result
 static void tch_updatePosition(Tch_Data_t *data);
 static void tch_updateFeatureRect(Tch_Data_t *data);
 static void tch_updateTargetRcd(Tch_Data_t *data, int index, int type);
-static int tch_intersect_rect(Track_Rect_t *rectA, Track_Rect_t *rectB, int expand_dis);
+
 
 static void tchTrack_Copy_matData(Tch_Data_t* datas, itc_uchar* srcData)
 {
@@ -65,7 +65,13 @@ int tch_trackInit(Tch_Data_t *data)
 {
 	if (!data)
 	{
-		data->sysData.callbackmsg_func("Tch_Data_t err.");
+		//data->sysData.callbackmsg_func("Tch_Data_t err.");
+		return -1;
+	}
+
+	if (data->numOfPos == 0)
+	{
+		data->sysData.callbackmsg_func("Preset number err.");
 		return -1;
 	}
 	data->track_pos_width = data->g_frameSize.width / data->numOfPos;
@@ -102,6 +108,8 @@ int tch_trackInit(Tch_Data_t *data)
 
 	data->cam_pos = calloc(data->numOfPos, sizeof(Tch_CamPosition_t));
 	Tch_CamPosition_t *ptr = data->cam_pos;
+
+	memset(data->g_lastTarget, 0, MAX_TARGET*sizeof(Track_Rect_t));
 
 	int cnt = 0;
 	int i = 0;
@@ -322,6 +330,11 @@ static void tch_updateFeatureRect(Tch_Data_t *data)
 
 static int tch_isBlackBoard(int numBlk, int numTch, Track_Rect_t *rectBlk, Track_Rect_t *rectTch, Tch_Data_t *data, TeaITRACK_Params *params,  itc_uchar *src, itc_uchar* pUV)
 {
+	if (data==NULL)
+	{
+		TCH_PRINTF("Data Error!\r\n");
+		return TRACK_FALSE;
+	}
 	int i = 0;
 	if (numBlk > 0)
 	{
@@ -334,11 +347,12 @@ static int tch_isBlackBoard(int numBlk, int numTch, Track_Rect_t *rectBlk, Track
 			drawRect.height = rectBlk[i].height;
 			tchTrack_drawShow_imgData(data, src, pUV, &drawRect, &data->green_colour);
 		}
-		if (1 == numTch)
+		if (1 == numTch && 1==data->lastRectNum)
 		{
 			//获取运动方向
 			int direct = -1;
 			direct = tch_calculateDirect_TCH(data->mhiMatTch, rectTch[0]);
+			data->g_lastTarget[0].rect = rectTch[0];
 			if (direct > -1)
 			{
 				tch_updatePosition(data);
@@ -395,78 +409,6 @@ static int tch_analyzeOutside(Tch_Data_t *data, TeaITRACK_Params *params)
 	return cnt;
 }
 
-static int tch_intersect_rect(Track_Rect_t *rectA, Track_Rect_t *rectB, int expand_dis)
-{
-	if (rectA == NULL || rectB == NULL)
-	{
-		return 0;
-	}
-
-	int x1_A = rectA->x;
-	int y1_A = rectA->y;
-	int x2_A = rectA->x + rectA->width;
-	int y2_A = rectA->y + rectA->height;
-
-	int x1_B = rectB->x;
-	int y1_B = rectB->y;
-	int x2_B = rectB->x + rectB->width;
-	int y2_B = rectB->y + rectB->height;
-
-	int x_left = ITC_IMIN(x1_A, x1_B);
-	int y_top = ITC_IMIN(y1_A, y1_B);
-	int x_right = ITC_IMAX(x2_A, x2_B);
-	int y_bottom = ITC_IMAX(y2_A, y2_B);
-	//合并后的大小
-	int width = x_right - x_left;
-	int height = y_bottom - y_top;
-	int sizeArea;
-	if (expand_dis > 0)
-	{
-		//expand_dis大于0表示只要两个矩形的边界距离小于expand_dis，函数都将返回1
-		expand_dis = sqrt(expand_dis);
-		if ((rectA->width + rectB->width + expand_dis < width)
-			|| (rectA->height + rectB->height + expand_dis < height))
-		{
-			return 0;
-		}
-	}
-	else
-	{
-		if (x1_A > x2_B)
-			return 0;
-		if (y1_A > y2_B)
-			return 0;
-		if (x2_A < x1_B)
-			return 0;
-		if (y2_A < y1_B)
-			return 0;
-
-		if (expand_dis < 0)
-		{
-			//对expand_dis进行处理
-			expand_dis = -expand_dis;
-			expand_dis = ITC_IMIN(expand_dis, ((rectA->width*rectA->height) >> 1));
-			expand_dis = ITC_IMIN(expand_dis, ((rectB->width*rectB->height) >> 1));
-
-			//求相交部分的大小
-			int width_int = ITC_IMIN(x2_A, x2_B) - ITC_IMAX(x1_A, x1_B);
-			int height_int = ITC_IMIN(y2_A, y2_B) - ITC_IMAX(y1_A, y1_B);
-			sizeArea = width_int*height_int;
-			//若相交部分小于expand_dis，则返回0
-			if (expand_dis > sizeArea
-				|| width_int < 0
-				|| height_int < 0)
-				return 0;
-		}
-	}
-	//合并到rectA
-	rectA->x = x_left;
-	rectA->y = y_top;
-	rectA->width = width;
-	rectA->height = height;
-	return sizeArea;
-}
-
 static void tch_mergeRects(Tch_Data_t *data)
 {
 	if (data->lastRectNum==1)
@@ -486,7 +428,7 @@ static void tch_mergeRects(Tch_Data_t *data)
 			if (j != i)
 			{
 				temp = data->g_lastTarget[i].rect;
-				flag = tch_intersect_rect(&temp, &data->g_lastTarget[j].rect, -10);
+				flag = track_intersect_rect2(&temp, &data->g_lastTarget[j].rect, -10);
 				if (flag>maxArea)
 				{
 					maxRect = temp;
@@ -541,38 +483,6 @@ static void tch_mergeRects(Tch_Data_t *data)
 
 static int tch_matchRects(Track_Rect_t *current, int num, Tch_Data_t *data, TeaITRACK_Params *params)
 {
-	//int index;
-	//if (data->lastRectNum==0)
-	//{
-	//	return TRACK_FALSE;
-	//}
-	//int i = 0;
-	//int result = TRACK_FALSE;
-	//Track_Rect_t temp;
-	//temp = current;
-	//for (i = 0; i < data->lastRectNum; i++)
-	//{
-	//	temp = current;
-	//	result = track_intersect_rect(&temp, &data->g_lastTarget[i], -10);
-	//	if (result == TRACK_TRUE)
-	//	{
-	//		TCH_PRINTF("No.%d, x:%d == x:%d, current\r\n", i, data->g_lastTarget[i].x,temp.x);
-	//		data->g_lastTarget[i] = temp;
-	//		break;
-	//	}
-	//	else
-	//	{
-	//		TCH_PRINTF("No.%d, x:%d != x:%d, current\r\n", i, data->g_lastTarget[i].x, temp.x);
-	//	}
-	//}
-	//TCH_PRINTF("================================\r\n");
-	//if (result == TRACK_TRUE)
-	//{
-	//	//data->sysData.callbackmsg_func("%d\n", i);
-	//	return i;
-	//}
-	//else
-	//	return TRACK_FALSE;
 	if (data==NULL)
 	{
 		return TRACK_FALSE;
@@ -583,12 +493,12 @@ static int tch_matchRects(Track_Rect_t *current, int num, Tch_Data_t *data, TeaI
 	{
 		for (j = 0; j < num;j++)
 		{
-			TCH_PRINTF("add multiple!\r\n");
+			//TCH_PRINTF("add multiple!\r\n");
 			data->g_lastTarget[data->lastRectNum].rect = current[j];
 			tch_updateTargetRcd(data, -1, ADD);
 		}
 		tch_mergeRects(data);
-		TCH_PRINTF("==============\r\n");
+		//TCH_PRINTF("==============\r\n");
 		return TRACK_TRUE;
 	}
 	else
@@ -597,22 +507,22 @@ static int tch_matchRects(Track_Rect_t *current, int num, Tch_Data_t *data, TeaI
 		for (j = 0; j < num; j++)
 		{
 			Track_Rect_t temp;
-			TCH_PRINTF("Current:%d: x = %d{\r\n", j, current[j].x);
+			//TCH_PRINTF("Current:%d: x = %d{\r\n", j, current[j].x);
 			for (i = 0; i < data->lastRectNum; i++)
 			{
 				temp = current[j];
-				flag = tch_intersect_rect(&temp, &data->g_lastTarget[i].rect, -10);
-				TCH_PRINTF("No.%d: x = %d\r\n", i, data->g_lastTarget[i]);
+				flag = track_intersect_rect2(&temp, &data->g_lastTarget[i].rect, -10);
+				//TCH_PRINTF("No.%d: x = %d\r\n", i, data->g_lastTarget[i]);
 				if (flag>maxArea)
 				{
 					maxArea = flag;
 					index = i;
 				}
 			}
-			TCH_PRINTF("}");
+			//TCH_PRINTF("}");
 			if (maxArea>0)
 			{
-				TCH_PRINTF("match No.%d!\r\n",index);
+				//TCH_PRINTF("match No.%d!\r\n",index);
 				/*if (current[j].y<params->threshold.outside&&data->g_lastTarget[index].start==1)
 				{
 					data->g_lastTarget[index].start = 0;
@@ -631,7 +541,7 @@ static int tch_matchRects(Track_Rect_t *current, int num, Tch_Data_t *data, TeaI
 						data->g_lastTarget[data->lastRectNum].rect = current[j];
 						tch_updateTargetRcd(data, -1, ADD);
 					}*/
-					TCH_PRINTF("add new!\r\n");
+					//TCH_PRINTF("add new!\r\n");
 					data->g_lastTarget[data->lastRectNum].rect = current[j];
 					tch_updateTargetRcd(data, -1, ADD);
 				}
@@ -639,7 +549,7 @@ static int tch_matchRects(Track_Rect_t *current, int num, Tch_Data_t *data, TeaI
 			}
 			
 		}
-		TCH_PRINTF("==============\r\n");
+		//TCH_PRINTF("==============\r\n");
 		tch_mergeRects(data);
 		return flag;
 	}
@@ -723,9 +633,9 @@ static int tch_noneTarget(Tch_Data_t *data, TeaITRACK_Params *params, Tch_Result
 	{
 		tch_updateFeatureRect(data);
 		Track_Rect_t featureRect;
-		featureRect.x = data->pos_slide.left * 48;
+		featureRect.x = data->pos_slide.left * data->track_pos_width;
 		featureRect.y = data->g_tchWin.y;
-		featureRect.width = 48 * data->numOfSlide;
+		featureRect.width = data->track_pos_width * data->numOfSlide;
 		featureRect.height = data->g_tchWin.height;
 		tchTrack_drawShow_imgData(data, src, pUV, &featureRect, &data->blue_colour);
 
@@ -885,6 +795,7 @@ static int tch_noneTarget(Tch_Data_t *data, TeaITRACK_Params *params, Tch_Result
 	//	//data->lastRectNum = s_rectCnt;
 	//	return isChange;
 	//}
+	return -1;
 }
 
 static int tch_multipleTarget(Tch_Data_t *data, TeaITRACK_Params *params, Tch_Result_t *res, itc_uchar *src, itc_uchar* pUV)
@@ -937,9 +848,9 @@ static int tch_singleTarget(Tch_Data_t *data, TeaITRACK_Params *params, Tch_Resu
 		tch_updatePosition(data);
 		tch_updateFeatureRect(data);
 		Track_Rect_t featureRect;
-		featureRect.x = data->pos_slide.left * 48;
+		featureRect.x = data->pos_slide.left * data->track_pos_width;
 		featureRect.y = data->g_tchWin.y;
-		featureRect.width = 48 * data->numOfSlide;
+		featureRect.width = data->track_pos_width * data->numOfSlide;
 		featureRect.height = data->g_tchWin.height;
 		tchTrack_drawShow_imgData(data, src, pUV, &featureRect, &data->blue_colour);
 
@@ -985,6 +896,7 @@ static int tch_singleTarget(Tch_Data_t *data, TeaITRACK_Params *params, Tch_Resu
 			return isChange;
 		}
 	}
+	return -1;
 }
 
 static void tch_updatePosition(Tch_Data_t *data)
@@ -1021,7 +933,7 @@ int tch_track(itc_uchar *src, itc_uchar* pUV, TeaITRACK_Params *params, Tch_Data
 	}
 	res->pos = -1;
 	res->status = RETURN_TRACK_TCH_NULL;
-	int i = 0, j = 0;
+	int i = 0;
 
 
 	if (data->g_count>0)
@@ -1041,7 +953,7 @@ int tch_track(itc_uchar *src, itc_uchar* pUV, TeaITRACK_Params *params, Tch_Data
 	Track_Rect_t s_rectsTch[100];
 	Track_Rect_t s_rectsBlk[100];
 	Track_Rect_t s_bigRects[100];//筛选出来的大面积运动物体
-	int s_maxdist = -1;//比较多个面积
+	//int s_maxdist = -1;//比较多个面积
 	int s_rectCnt = 0;
 	int isChange = -1;
 
@@ -1063,8 +975,8 @@ int tch_track(itc_uchar *src, itc_uchar* pUV, TeaITRACK_Params *params, Tch_Data
 		Track_Contour_t *contoursBlk = NULL;
 		itcClearMemStorage(data->storageBlk);
 		track_find_contours(data->maskMatBlk, &contoursBlk, data->storageBlk);
-		s_contourRectBlk = track_filtrate_contours(&contoursBlk, 20, s_rectsBlk);
-		Track_Rect_t drawRect;
+		s_contourRectBlk = track_filtrate_contours(&contoursBlk, 10, s_rectsBlk);
+		//Track_Rect_t drawRect;
 
 		for (i = 0; i < s_contourRectTch; i++)
 		{
@@ -1075,7 +987,7 @@ int tch_track(itc_uchar *src, itc_uchar* pUV, TeaITRACK_Params *params, Tch_Data
 			}
 		}
 
-#ifdef _WIN32
+#ifdef WIN32
 		int YUV420_type = TRACK_DRAW_YUV420P;
 		Track_Size_t imgSize;
 		imgSize.height = data->g_frameSize.height;
@@ -1241,6 +1153,8 @@ void tch_trackDestroy(Tch_Data_t *data)
 		itc_release_mat(&data->mhiMatBlk);
 		itc_release_mat(&data->maskMatBlk);
 
+		free(data->cam_pos);
+		data->cam_pos = NULL;
 		//DestroyQueue(data->tch_queue);
 	}
 	else

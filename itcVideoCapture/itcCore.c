@@ -634,6 +634,78 @@ int track_intersect_rect(Track_Rect_t *rectA, Track_Rect_t *rectB, int expand_di
 	return 1;
 }
 
+int track_intersect_rect2(Track_Rect_t *rectA, Track_Rect_t *rectB, int expand_dis)
+{
+	if (rectA == NULL || rectB == NULL)
+	{
+		return 0;
+	}
+
+	int x1_A = rectA->x;
+	int y1_A = rectA->y;
+	int x2_A = rectA->x + rectA->width;
+	int y2_A = rectA->y + rectA->height;
+
+	int x1_B = rectB->x;
+	int y1_B = rectB->y;
+	int x2_B = rectB->x + rectB->width;
+	int y2_B = rectB->y + rectB->height;
+
+	int x_left = ITC_IMIN(x1_A, x1_B);
+	int y_top = ITC_IMIN(y1_A, y1_B);
+	int x_right = ITC_IMAX(x2_A, x2_B);
+	int y_bottom = ITC_IMAX(y2_A, y2_B);
+	//合并后的大小
+	int width = x_right - x_left;
+	int height = y_bottom - y_top;
+	int sizeArea;
+	if (expand_dis > 0)
+	{
+		//expand_dis大于0表示只要两个矩形的边界距离小于expand_dis，函数都将返回1
+		expand_dis = sqrt(expand_dis);
+		if ((rectA->width + rectB->width + expand_dis < width)
+			|| (rectA->height + rectB->height + expand_dis < height))
+		{
+			return 0;
+		}
+	}
+	else
+	{
+		if (x1_A > x2_B)
+			return 0;
+		if (y1_A > y2_B)
+			return 0;
+		if (x2_A < x1_B)
+			return 0;
+		if (y2_A < y1_B)
+			return 0;
+
+		if (expand_dis < 0)
+		{
+			//对expand_dis进行处理
+			expand_dis = -expand_dis;
+			expand_dis = ITC_IMIN(expand_dis, ((rectA->width*rectA->height) >> 1));
+			expand_dis = ITC_IMIN(expand_dis, ((rectB->width*rectB->height) >> 1));
+
+			//求相交部分的大小
+			int width_int = ITC_IMIN(x2_A, x2_B) - ITC_IMAX(x1_A, x1_B);
+			int height_int = ITC_IMIN(y2_A, y2_B) - ITC_IMAX(y1_A, y1_B);
+			sizeArea = width_int*height_int;
+			//若相交部分小于expand_dis，则返回0
+			if (expand_dis > sizeArea
+				|| width_int < 0
+				|| height_int < 0)
+				return 0;
+		}
+	}
+	//合并到rectA
+	rectA->x = x_left;
+	rectA->y = y_top;
+	rectA->width = width;
+	rectA->height = height;
+	return sizeArea;
+}
+
 int track_filtrate_contours(Track_Contour_t** pContour, int size_Threshold, Track_Rect_t *rect_arr)
 {
 	if (rect_arr == NULL || *pContour == NULL)
@@ -663,9 +735,17 @@ int track_filtrate_contours(Track_Contour_t** pContour, int size_Threshold, Trac
 			{
 				if (track_intersect_rect(rect_arr + i, rect_arr + j, 0))		//判断是否相交，如果相交则直接合并
 				{
+					int k = 0;
 					count_rect--;
-					*(rect_arr + j) = *(rect_arr + count_rect);
+					for (k = j; k < count_rect; k++)
+					{
+						*(rect_arr + k) = *(rect_arr + k + 1);
+					}	
 					j--;
+					if (i > j)
+					{
+						i--;
+					}
 				}
 			}
 		}

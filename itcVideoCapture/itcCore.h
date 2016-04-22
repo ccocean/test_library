@@ -88,6 +88,8 @@ int track_filtrate_contours(Track_Contour_t** pContour,int size_Threshold, Track
 
 int track_intersect_rect(Track_Rect_t *rectA, Track_Rect_t *rectB, int expand_dis);	//判断两个矩形框是否相交
 
+int track_intersect_rect2(Track_Rect_t *rectA, Track_Rect_t *rectB, int expand_dis);//判断两个矩形是否相交并返回面积
+
 int track_calculateDirect_ROI(Itc_Mat_t* mhi, Track_Rect_t roi, int *direct, float *dX, float *dY);	//返回roi区域内的目标整体运动方向
 
 void track_update_midValueBK(Itc_Mat_t* mat, Itc_Mat_t* matBK);					//用中值法更新背景
