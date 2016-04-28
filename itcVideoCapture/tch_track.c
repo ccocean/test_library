@@ -405,6 +405,20 @@ static int tch_analyzeOutside(Tch_Data_t *data, TeaITRACK_Params *params)
 		{
 			data->g_lastTarget[i].end = 0;
 		}
+		if (data->g_lastTarget[i].rect.x>data->g_tchWin.x+data->g_tchWin.width || data->g_lastTarget[i].rect.x + data->g_lastTarget[i].rect.width<data->g_tchWin.x)
+		{
+			data->g_lastTarget[i].end++;
+			if (data->g_lastTarget[i].end > OUTSIDE_THRSHLD)
+			{
+				//TCH_PRINTF("Remove No.%d!\r\n", i);
+				tch_updateTargetRcd(data, i, REMOVE);
+				cnt++;
+			}
+		}
+		else
+		{
+			data->g_lastTarget[i].end = 0;
+		}
 	}
 	return cnt;
 }
