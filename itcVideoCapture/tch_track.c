@@ -20,12 +20,47 @@ static void tch_updatePosition(Tch_Data_t *data);
 static void tch_updateFeatureRect(Tch_Data_t *data);
 static void tch_updateTargetRcd(Tch_Data_t *data, int index, int type);
 
+int tch_destroyAnalysis(Tch_Analysis_t **analysis)
+{
+	if (*analysis==NULL)
+	{
+		return -1;
+	}
+	track_timerDestroy(&(*analysis)->outTimer, &(*analysis)->cntOutside);
+	track_timerDestroy(&(*analysis)->mlpTimer, &(*analysis)->cntMultiple);
+	free(*analysis);
+	*analysis = NULL;
+	return 0;
+}
+
+int tch_switchAnalysis(Tch_Data_t *data)
+{
+	if (data==NULL)
+	{
+		return -1;
+	}
+	if (data->isAnalysing==1)
+	{
+		data->isAnalysing = 0;
+		tch_destroyAnalysis(&data->analysis);
+		return data->isAnalysing;
+	}
+	else
+	{
+		tch_destroyAnalysis(&data->analysis);
+		data->isAnalysing = 1;
+		data->analysis = track_analysisCreate(TEACHER);
+		data->nodeOutside = track_timerInit();
+		data->nodeMultiple = track_timerInit();
+		return data->isAnalysing;
+	}
+}
 
 static void tchTrack_Copy_matData(Tch_Data_t* datas, itc_uchar* srcData)
 {
 	//ITC_FUNCNAME("FUNCNAME:stuTrack_resizeCopy_matData\n");
 	int y = 0;
-	int tch_step = datas->g_tchWin.width;
+	int tch_step = datas->g_anaWin.width;
 	int blk_step = datas->g_blkWin.width;
 	int src_step = datas->sysData.width;
 	if (tch_step > src_step)
@@ -52,8 +87,8 @@ static void tchTrack_Copy_matData(Tch_Data_t* datas, itc_uchar* srcData)
 	}
 
 	itc_uchar* dst_tch = datas->currMatTch->data.ptr;
-	itc_uchar* src_tch = srcData + src_step*datas->g_tchWin.y + datas->g_tchWin.x;
-	for (y = 0; y < datas->g_tchWin.height; y++)
+	itc_uchar* src_tch = srcData + src_step*datas->g_anaWin.y + datas->g_anaWin.x;
+	for (y = 0; y < datas->g_anaWin.height; y++)
 	{
 		memcpy(dst_tch, src_tch, sizeof(itc_uchar)* tch_step);
 		dst_tch += tch_step;
@@ -74,7 +109,8 @@ int tch_trackInit(Tch_Data_t *data)
 		data->sysData.callbackmsg_func("Preset number err.");
 		return -1;
 	}
-	data->track_pos_width = data->g_frameSize.width / data->numOfPos;
+	//data->track_pos_width = data->g_frameSize.width / data->numOfPos;
+	data->track_pos_width = data->g_tchWin.width / data->numOfPos;
 
 	data->tch_lastStatus = RETURN_TRACK_TCH_NULL;
 
@@ -106,6 +142,12 @@ int tch_trackInit(Tch_Data_t *data)
 	data->pos_slide.left = -1;
 	data->pos_slide.right = -1;
 
+	data->g_anaWin.x = 0;
+	data->g_anaWin.y = data->g_tchWin.y;
+	data->g_anaWin.width = data->g_frameSize.width;
+	data->g_anaWin.height = data->g_tchWin.height;
+
+
 	data->cam_pos = calloc(data->numOfPos, sizeof(Tch_CamPosition_t));
 	Tch_CamPosition_t *ptr = data->cam_pos;
 
@@ -116,8 +158,8 @@ int tch_trackInit(Tch_Data_t *data)
 	while (cnt<data->numOfPos)
 	{
 		ptr->index = i / data->track_pos_width;
-		ptr->left_pixel = i;
-		ptr->right_pixel = i + data->track_pos_width;
+		ptr->left_pixel = i + data->g_tchWin.x;
+		ptr->right_pixel = i + data->g_tchWin.x + data->track_pos_width;
 		i += data->track_pos_width;
 		ptr++;
 		cnt++;
@@ -127,14 +169,14 @@ int tch_trackInit(Tch_Data_t *data)
 
 	//data->srcMat = itc_create_mat(data->g_frameSize.height, data->g_frameSize.width, ITC_8UC1);
 
-	data->prevMatTch = itc_create_mat(data->g_tchWin.height, data->g_tchWin.width, ITC_8UC1);
+	data->prevMatTch = itc_create_mat(data->g_anaWin.height, data->g_anaWin.width, ITC_8UC1);
 	data->prevMatBlk = itc_create_mat(data->g_blkWin.height, data->g_blkWin.width, ITC_8UC1);
 	data->tempMatTch = NULL;
 	data->tempMatBlk = NULL;
 
-	data->currMatTch = itc_create_mat(data->g_tchWin.height, data->g_tchWin.width, ITC_8UC1);
-	data->mhiMatTch = itc_create_mat(data->g_tchWin.height, data->g_tchWin.width, ITC_8UC1);
-	data->maskMatTch = itc_create_mat(data->g_tchWin.height, data->g_tchWin.width, ITC_8UC1);
+	data->currMatTch = itc_create_mat(data->g_anaWin.height, data->g_anaWin.width, ITC_8UC1);
+	data->mhiMatTch = itc_create_mat(data->g_anaWin.height, data->g_anaWin.width, ITC_8UC1);
+	data->maskMatTch = itc_create_mat(data->g_anaWin.height, data->g_anaWin.width, ITC_8UC1);
 	data->currMatBlk = itc_create_mat(data->g_blkWin.height, data->g_blkWin.width, ITC_8UC1);
 	data->mhiMatBlk = itc_create_mat(data->g_blkWin.height, data->g_blkWin.width, ITC_8UC1);
 	data->maskMatBlk = itc_create_mat(data->g_blkWin.height, data->g_blkWin.width, ITC_8UC1);
@@ -143,8 +185,10 @@ int tch_trackInit(Tch_Data_t *data)
 	data->storageTch = itcCreateChildMemStorage(data->storage);
 	data->storageBlk = itcCreateChildMemStorage(data->storage);
 
-	//data->tch_queue = InitQueue();
-	//data->callbackmsg_func = printf;
+	/*data->isAnalysing = 1;
+	data->analysis = track_analysisCreate();
+	data->nodeOutside = track_timerInit();
+	data->nodeMultiple = track_timerInit();*/
 
 	return 0;
 }
@@ -250,6 +294,17 @@ static void tch_updateFeatureRect(Tch_Data_t *data)
 				data->slideTimer.deltaTime = 0;
 				data->slideTimer.start = gettime();*/
 				//TCH_PRINTF("reseting time!!!!!\r\n");
+				if (data->isAnalysing)
+				{
+					if (data->analysis->standTimer.start != 0)
+					{
+						track_timerEnd(&data->analysis->standTimer);
+					}
+					if (data->analysis->moveTimer.start == 0)
+					{
+						track_timerStart(&data->analysis->moveTimer);//分析
+					}
+				}
 				tch_updateTimer(&data->g_lastTarget[0].timer, RESET);
 			}
 			data->pos_slide.center = data->pos_slide.width;
@@ -272,6 +327,18 @@ static void tch_updateFeatureRect(Tch_Data_t *data)
 				data->slideTimer.deltaTime = 0;
 				data->slideTimer.start = gettime();*/
 				//TCH_PRINTF("reseting time!!!!!\r\n");
+				if (data->isAnalysing)
+				{
+					if (data->analysis->standTimer.start != 0)
+					{
+						track_timerEnd(&data->analysis->standTimer);
+					}
+					if (data->analysis->moveTimer.start == 0)
+					{
+						track_timerStart(&data->analysis->moveTimer);//分析
+					}
+				}
+				
 				tch_updateTimer(&data->g_lastTarget[0].timer, RESET);
 			}
 			data->pos_slide.center = data->numOfPos - 1 - data->pos_slide.width;
@@ -288,6 +355,17 @@ static void tch_updateFeatureRect(Tch_Data_t *data)
 			data->slideTimer.deltaTime = 0;
 			data->slideTimer.start = gettime();*/
 			//TCH_PRINTF("reseting time!!!!!\r\n");
+			if (data->isAnalysing)
+			{
+				if (data->analysis->standTimer.start != 0)
+				{
+					track_timerEnd(&data->analysis->standTimer);
+				}
+				if (data->analysis->moveTimer.start == 0)
+				{
+					track_timerStart(&data->analysis->moveTimer);//分析
+				}
+			}
 			tch_updateTimer(&data->g_lastTarget[0].timer, RESET);
 		}
 	}
@@ -316,6 +394,30 @@ static void tch_updateFeatureRect(Tch_Data_t *data)
 		data->slideTimer.deltaTime = 0;
 		data->slideTimer.start = gettime();*/
 		//TCH_PRINTF("reseting time!!!!!\r\n");
+		if (data->isAnalysing)
+		{
+			if (data->nodeOutside->start != 0 && data->nodeOutside->start != (ULINT)-1)
+			{
+				track_timerEnd(data->nodeOutside);
+				/*if (data->analysis->cntOutside>=2)
+				{
+				track_timerDestroy(&data->analysis->outTimer, &data->analysis->cntOutside);
+				}*/
+				data->analysis->outTimer = track_timerIncrease(data->analysis->outTimer, &data->analysis->cntOutside, data->nodeOutside);
+				memset(data->nodeOutside, -1, sizeof(Analysis_Timer_t));
+				data->nodeOutside->deltatime = 0;
+			}
+			if (data->analysis->standTimer.start != 0)
+			{
+				track_timerEnd(&data->analysis->standTimer);
+			}
+			if (data->analysis->moveTimer.start == 0)
+			{
+				track_timerStart(&data->analysis->moveTimer);//分析
+			}
+		}
+		
+
 		tch_updateTimer(&data->g_lastTarget[0].timer, RESET);
 	}
 	else//在特写镜头范围内则维护时间
@@ -356,8 +458,8 @@ static int tch_isBlackBoard(int numBlk, int numTch, Track_Rect_t *rectBlk, Track
 			if (direct > -1)
 			{
 				tch_updatePosition(data);
-				drawRect.x = rectTch[0].x + data->g_tchWin.x;
-				drawRect.y = rectTch[0].y + data->g_tchWin.y;
+				drawRect.x = rectTch[0].x + data->g_anaWin.x;
+				drawRect.y = rectTch[0].y + data->g_anaWin.y;
 				drawRect.width = rectTch[0].width;
 				drawRect.height = rectTch[0].height;
 				//tchTrack_drawShow_imgData(data, src, pUV, &drawRect, &data->yellow_colour);
@@ -374,11 +476,15 @@ static int tch_isBlackBoard(int numBlk, int numTch, Track_Rect_t *rectBlk, Track
 static int tch_analyzeOutside(Tch_Data_t *data, TeaITRACK_Params *params)
 {
 	int i;
+	int left = data->g_tchWin.x;
+	int right = data->g_tchWin.x + data->g_tchWin.width;
 	int cnt = 0;
 	for (i = 0; i < data->lastRectNum; i++)
 	{
 		//TCH_PRINTF("No.%d y = %d\r\n", i, data->g_lastTarget[i].rect.y);
-		if (data->g_lastTarget[i].rect.y>params->threshold.outside)
+		if (data->g_lastTarget[i].rect.y>params->threshold.outside || 
+			data->g_lastTarget[i].rect.x>right || 
+			data->g_lastTarget[i].rect.x + data->g_lastTarget[i].rect.width<left)
 		{
 			//tch_updateTargetRcd(data, i, REMOVE);
 			
@@ -398,6 +504,13 @@ static int tch_analyzeOutside(Tch_Data_t *data, TeaITRACK_Params *params)
 			{
 				//TCH_PRINTF("Remove No.%d!\r\n", i);
 				tch_updateTargetRcd(data, i, REMOVE);
+				//if (data->lastRectNum==0)
+				//{
+				//	if (data->nodeOutside->start == (ULINT)-1)
+				//	{
+				//		track_timerStart(data->nodeOutside);//分析
+				//	}
+				//}
 				cnt++;
 			}
 		}
@@ -405,20 +518,20 @@ static int tch_analyzeOutside(Tch_Data_t *data, TeaITRACK_Params *params)
 		{
 			data->g_lastTarget[i].end = 0;
 		}
-		if (data->g_lastTarget[i].rect.x>data->g_tchWin.x+data->g_tchWin.width || data->g_lastTarget[i].rect.x + data->g_lastTarget[i].rect.width<data->g_tchWin.x)
-		{
-			data->g_lastTarget[i].end++;
-			if (data->g_lastTarget[i].end > OUTSIDE_THRSHLD)
-			{
-				//TCH_PRINTF("Remove No.%d!\r\n", i);
-				tch_updateTargetRcd(data, i, REMOVE);
-				cnt++;
-			}
-		}
-		else
-		{
-			data->g_lastTarget[i].end = 0;
-		}
+		//if (data->g_lastTarget[i].rect.x>data->g_tchWin.x+data->g_tchWin.width || data->g_lastTarget[i].rect.x + data->g_lastTarget[i].rect.width<data->g_tchWin.x)
+		//{
+		//	data->g_lastTarget[i].end++;
+		//	if (data->g_lastTarget[i].end > OUTSIDE_THRSHLD)
+		//	{
+		//		//TCH_PRINTF("Remove No.%d!\r\n", i);
+		//		tch_updateTargetRcd(data, i, REMOVE);
+		//		cnt++;
+		//	}
+		//}
+		//else
+		//{
+		//	data->g_lastTarget[i].end = 0;
+		//}
 	}
 	return cnt;
 }
@@ -627,10 +740,26 @@ static int tch_noneTarget(Tch_Data_t *data, TeaITRACK_Params *params, Tch_Result
 	int isChange;
 	if (data->lastRectNum==0)
 	{
+		//track_timerInit(data->nodeOutside);
+		if (data->isAnalysing)
+		{
+			if (data->nodeOutside->start == (ULINT)-1)
+			{
+				track_timerStart(data->nodeOutside);//分析
+			}
+			if (data->analysis->standTimer.start != 0)
+			{
+				track_timerEnd(&data->analysis->standTimer);
+			}
+			if (data->analysis->moveTimer.start != 0)
+			{
+				track_timerEnd(&data->analysis->moveTimer);
+			}
+		}
+		
 		res->status = RETURN_TRACK_TCH_OUTSIDE;
 		isChange = (res->status != data->tch_lastStatus);
 		data->tch_lastStatus = RETURN_TRACK_TCH_OUTSIDE;
-
 		data->slideTimer.deltaTime = 0;
 		data->slideTimer.start = 0;
 		data->pos_slide.center = -1;
@@ -647,20 +776,33 @@ static int tch_noneTarget(Tch_Data_t *data, TeaITRACK_Params *params, Tch_Result
 	{
 		tch_updateFeatureRect(data);
 		Track_Rect_t featureRect;
-		featureRect.x = data->pos_slide.left * data->track_pos_width;
-		featureRect.y = data->g_tchWin.y;
+		featureRect.x = data->pos_slide.left * data->track_pos_width + data->g_tchWin.x;
+		featureRect.y = data->g_anaWin.y;
 		featureRect.width = data->track_pos_width * data->numOfSlide;
-		featureRect.height = data->g_tchWin.height;
+		featureRect.height = data->g_anaWin.height;
 		tchTrack_drawShow_imgData(data, src, pUV, &featureRect, &data->blue_colour);
 
 		Track_Rect_t drawRect;
-		drawRect.x = data->g_lastTarget[0].rect.x + data->g_tchWin.x;
-		drawRect.y = data->g_lastTarget[0].rect.y + data->g_tchWin.y;
+		drawRect.x = data->g_lastTarget[0].rect.x + data->g_anaWin.x;
+		drawRect.y = data->g_lastTarget[0].rect.y + data->g_anaWin.y;
 		drawRect.width = data->g_lastTarget[0].rect.width;
 		drawRect.height = data->g_lastTarget[0].rect.height;
 		tch_updateTimer(&data->g_lastTarget[0].timer,UPDATE);
 		if ((data->g_lastTarget[0].timer.deltaTime) > params->threshold.stand)
 		{
+			if (data->isAnalysing)
+			{
+				if (data->analysis->standTimer.start==0)
+				{
+					track_timerStart(&data->analysis->standTimer);
+				}
+				if (data->analysis->moveTimer.start!=0)
+				{
+					track_timerEnd(&data->analysis->moveTimer);//分析
+				}
+			}
+			
+			
 			res->status = RETURN_TRACK_TCH_MOVEINVIEW;
 			isChange = (res->status != data->tch_lastStatus);
 			data->tch_lastStatus = RETURN_TRACK_TCH_MOVEINVIEW;
@@ -702,8 +844,8 @@ static int tch_noneTarget(Tch_Data_t *data, TeaITRACK_Params *params, Tch_Result
 		Track_Rect_t drawRect;
 		for (i = 0; i < data->lastRectNum; i++)
 		{
-			drawRect.x = data->g_lastTarget[i].rect.x + data->g_tchWin.x;
-			drawRect.y = data->g_lastTarget[i].rect.y + data->g_tchWin.y;
+			drawRect.x = data->g_lastTarget[i].rect.x + data->g_anaWin.x;
+			drawRect.y = data->g_lastTarget[i].rect.y + data->g_anaWin.y;
 			drawRect.width = data->g_lastTarget[i].rect.width;
 			drawRect.height = data->g_lastTarget[i].rect.height;
 			tch_updateTimer(&data->g_lastTarget[i].timer, UPDATE);
@@ -716,7 +858,22 @@ static int tch_noneTarget(Tch_Data_t *data, TeaITRACK_Params *params, Tch_Result
 				tchTrack_drawShow_imgData(data, src, pUV, &drawRect, &data->lilac_colour);
 			}
 		}
-
+		if (data->isAnalysing)
+		{
+			if (data->nodeMultiple->start == 0)
+			{
+				track_timerStart(data->nodeMultiple);
+			}
+			if (data->analysis->standTimer.start != 0)
+			{
+				track_timerEnd(&data->analysis->standTimer);
+			}
+			if (data->analysis->moveTimer.start != 0)
+			{
+				track_timerEnd(&data->analysis->moveTimer);
+			}
+		}
+		
 		res->status = RETURN_TRACK_TCH_MULITY;
 		isChange = (res->status != data->tch_lastStatus);
 		data->tch_lastStatus = RETURN_TRACK_TCH_MULITY;
@@ -815,13 +972,14 @@ static int tch_noneTarget(Tch_Data_t *data, TeaITRACK_Params *params, Tch_Result
 static int tch_multipleTarget(Tch_Data_t *data, TeaITRACK_Params *params, Tch_Result_t *res, itc_uchar *src, itc_uchar* pUV)
 {
 	Track_Rect_t drawRect;
+	
 	tch_updateFeatureRect(data);
 	int isChange;
 	int i;
 	for (i = 0; i < data->lastRectNum; i++)
 	{
-		drawRect.x = data->g_lastTarget[i].rect.x + data->g_tchWin.x;
-		drawRect.y = data->g_lastTarget[i].rect.y + data->g_tchWin.y;
+		drawRect.x = data->g_lastTarget[i].rect.x + data->g_anaWin.x;
+		drawRect.y = data->g_lastTarget[i].rect.y + data->g_anaWin.y;
 		drawRect.width = data->g_lastTarget[i].rect.width;
 		drawRect.height = data->g_lastTarget[i].rect.height;
 		tch_updateTimer(&data->g_lastTarget[i].timer, UPDATE);
@@ -834,6 +992,24 @@ static int tch_multipleTarget(Tch_Data_t *data, TeaITRACK_Params *params, Tch_Re
 			tchTrack_drawShow_imgData(data, src, pUV, &drawRect, &data->lilac_colour);
 		}
 	}
+	if (data->isAnalysing)
+	{
+		if (data->nodeMultiple->start == 0)
+		{
+			track_timerStart(data->nodeMultiple);
+		}
+		if (data->analysis->standTimer.start != 0)
+		{
+			track_timerEnd(&data->analysis->standTimer);
+		}
+		if (data->analysis->moveTimer.start != 0)
+		{
+			track_timerEnd(&data->analysis->moveTimer);
+		}
+	}
+	
+	//track_timerUpdate(&data->analysis->standTimer);
+	//track_timerUpdate(&data->analysis->moveTimer);
 
 	res->status = RETURN_TRACK_TCH_MULITY;
 	isChange = (res->status != data->tch_lastStatus);
@@ -854,27 +1030,57 @@ static int tch_singleTarget(Tch_Data_t *data, TeaITRACK_Params *params, Tch_Resu
 	Track_Rect_t rectTch = data->g_lastTarget[0].rect;
 	track_calculateDirect_ROI(data->mhiMatTch, rectTch, &direct, &dx, &dy);
 	Track_Rect_t drawRect;
-	
 	if (direct>-1)
 	{
 		//data->center = itcPoint(rectTch.x + (rectTch.width >> 1), rectTch.y + (rectTch.height >> 1));
+		if (data->isAnalysing)
+		{
+			if (data->nodeMultiple->start!=0)
+			{
+				track_timerEnd(data->nodeMultiple);
+				data->analysis->mlpTimer = track_timerIncrease(data->analysis->mlpTimer, &data->analysis->cntMultiple, data->nodeMultiple);
+				//data->nodeMultiple = track_timerInit();
+				memset(data->nodeMultiple, 0, sizeof(Analysis_Timer_t));
+			}
+		}
 		
 		tch_updatePosition(data);
 		tch_updateFeatureRect(data);
 		Track_Rect_t featureRect;
-		featureRect.x = data->pos_slide.left * data->track_pos_width;
-		featureRect.y = data->g_tchWin.y;
+		featureRect.x = data->pos_slide.left * data->track_pos_width + data->g_tchWin.x;
+		featureRect.y = data->g_anaWin.y;
 		featureRect.width = data->track_pos_width * data->numOfSlide;
-		featureRect.height = data->g_tchWin.height;
+		featureRect.height = data->g_anaWin.height;
 		tchTrack_drawShow_imgData(data, src, pUV, &featureRect, &data->blue_colour);
 
-		drawRect.x = data->g_lastTarget[0].rect.x + data->g_tchWin.x;
-		drawRect.y = data->g_lastTarget[0].rect.y + data->g_tchWin.y;
+		drawRect.x = data->g_lastTarget[0].rect.x + data->g_anaWin.x;
+		drawRect.y = data->g_lastTarget[0].rect.y + data->g_anaWin.y;
 		drawRect.width = data->g_lastTarget[0].rect.width;
 		drawRect.height = data->g_lastTarget[0].rect.height;
 		//TCH_PRINTF("End count:%d\r\n", data->g_lastTarget[0].end);
+
+		if (data->isAnalysing)
+		{
+			memset(data->nodeOutside, -1, sizeof(Analysis_Timer_t));
+			data->nodeOutside->deltatime = 0;
+		}
+		
 		if ((data->g_lastTarget[0].timer.deltaTime) > params->threshold.stand)
 		{
+			if (data->isAnalysing)
+			{
+				if (data->analysis->standTimer.start==0)
+				{
+					track_timerStart(&data->analysis->standTimer);
+				}
+			
+				if (data->analysis->moveTimer.start!=0)
+				{
+					track_timerEnd(&data->analysis->moveTimer);//分析
+				}
+			}
+			
+			
 			res->status = RETURN_TRACK_TCH_MOVEINVIEW;
 			isChange = (res->status != data->tch_lastStatus);
 			data->tch_lastStatus = RETURN_TRACK_TCH_MOVEINVIEW;
@@ -920,6 +1126,17 @@ static void tch_updatePosition(Tch_Data_t *data)
 	ptr = data->cam_pos;
 	data->center = itcPoint(data->g_lastTarget[0].rect.x + (data->g_lastTarget[0].rect.width >> 1), data->g_lastTarget[0].rect.y + (data->g_lastTarget[0].rect.height >> 1));
 	//获取当前运动框体所在的预置位
+	if (data->center.x<=data->g_tchWin.x)
+	{
+		data->g_posIndex = 0;
+		return;
+	}
+	int right = data->g_tchWin.x + data->g_tchWin.width;
+	if (data->center.x >= right)
+	{
+		data->g_posIndex = data->numOfPos;
+		return;
+	}
 	for (i = 0; i < data->numOfPos; i++)
 	{
 		if (ptr->left_pixel <= data->center.x&&data->center.x <= ptr->right_pixel)
@@ -1007,8 +1224,8 @@ int tch_track(itc_uchar *src, itc_uchar* pUV, TeaITRACK_Params *params, Tch_Data
 		imgSize.height = data->g_frameSize.height;
 		imgSize.width = data->g_frameSize.width;
 		Track_Point_t point1, point2;
-		point1.x = 0, point1.y = params->threshold.outside + data->g_tchWin.y;
-		point2.x = imgSize.width, point2.y = params->threshold.outside + data->g_tchWin.y;
+		point1.x = 0, point1.y = params->threshold.outside + data->g_anaWin.y;
+		point2.x = imgSize.width, point2.y = params->threshold.outside + data->g_anaWin.y;
 		track_draw_line(src, pUV, &imgSize, &point1, &point2, &data->black_colour, YUV420_type);
 #endif
 		
@@ -1027,14 +1244,14 @@ int tch_track(itc_uchar *src, itc_uchar* pUV, TeaITRACK_Params *params, Tch_Data
 
 			for (i = 0; i < data->lastRectNum; i++)
 			{
-				drawRect.x = data->g_lastTarget[i].rect.x + data->g_tchWin.x;
-				drawRect.y = data->g_lastTarget[i].rect.y + data->g_tchWin.y;
+				drawRect.x = data->g_lastTarget[i].rect.x + data->g_anaWin.x;
+				drawRect.y = data->g_lastTarget[i].rect.y + data->g_anaWin.y;
 				drawRect.width = data->g_lastTarget[i].rect.width;
 				drawRect.height = data->g_lastTarget[i].rect.height;
 				tch_updateTimer(&data->g_lastTarget[i].timer, UPDATE);
 				tchTrack_drawShow_imgData(data, src, pUV, &drawRect, &data->yellow_colour);
 			}
-
+			tch_matchRects(s_bigRects, s_rectCnt, data, params);
 			return isChange;
 		}
 		else

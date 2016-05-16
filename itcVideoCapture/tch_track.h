@@ -5,6 +5,7 @@
 #include "tch_params.h"
 #include "itcTrack_draw_img.h"
 #include "Tch_Queue.h"
+#include "track_analysis.h"
 #include<time.h>
 
 #ifdef  __cplusplus
@@ -60,6 +61,8 @@ typedef struct TrackTimer
 	unsigned long finish;
 	double deltaTime;
 }Tch_Timer_t;
+
+
 
 //预置位块
 typedef struct CamPosition
@@ -126,6 +129,7 @@ typedef struct Data
 	Track_Size_t src_size;	//原始图像大小
 	Track_Rect_t g_tchWin;  //处理教师的图片大小
 	Track_Rect_t g_blkWin;
+	Track_Rect_t g_anaWin;//窗口大小
 	//Track_Rect_t g_lastTarget[10];//上一次的目标
 	Tch_Traget_t g_lastTarget[MAX_TARGET];
 
@@ -140,6 +144,12 @@ typedef struct Data
 	Itc_Mat_t *currMatBlk;
 	Itc_Mat_t *mhiMatBlk;
 	Itc_Mat_t *maskMatBlk;
+
+	//分析参数
+	int isAnalysing;	//是否开启分析1为开启，0为关闭
+	Tch_Analysis_t *analysis;
+	Analysis_Timer_t *nodeOutside;
+	Analysis_Timer_t *nodeMultiple;
 
 	Track_MemStorage_t *storage;
 	Track_MemStorage_t *storageTch;
@@ -174,6 +184,8 @@ typedef struct Data
 
 }Tch_Data_t;
 
+
+
 //#define _PRINTF ((callbackmsg)(data->callbackmsg_func))
 
 int tch_Init(TeaITRACK_Params *params, Tch_Data_t *data);//先调用这个
@@ -187,6 +199,10 @@ void tch_trackDestroy(Tch_Data_t *data);//一帧结束调用这个
 int tch_trackInit(Tch_Data_t *data);//不用管
 
 int tch_calculateDirect_TCH(Itc_Mat_t* src, Track_Rect_t roi);//不用管
+
+int tch_switchAnalysis(Tch_Data_t *data);
+
+int tch_destroyAnalysis(Tch_Data_t *data);
 
 
 #ifdef  __cplusplus  

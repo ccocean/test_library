@@ -81,6 +81,9 @@
     <ClInclude Include="stuTrack_track_img.h">
       <Filter>头文件</Filter>
     </ClInclude>
+    <ClInclude Include="track_analysis.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="itcVideoCapture.cpp">
@@ -120,6 +123,9 @@
       <Filter>源文件</Filter>
     </ClCompile>
     <ClCompile Include="itcdatastructs.c">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="track_analysis.c">
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>

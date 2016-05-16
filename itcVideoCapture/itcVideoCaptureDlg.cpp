@@ -147,7 +147,7 @@ BOOL CitcVideoCaptureDlg::OnInitDialog()
 	BYTE nf1 = 192;
 	BYTE nf2 = 168;
 	BYTE nf3 = 17;
-	BYTE nf4 = 52;
+	BYTE nf4 = 54;
 	m_ipAddr.SetAddress(nf1, nf2, nf3, nf4);
 	m_ipAddr2.SetAddress(nf1, nf2, nf3, nf4+1);
 	int iResult = 0;
@@ -662,21 +662,23 @@ DWORD WINAPI CitcVideoCaptureDlg::imageProcessThread(LPVOID pParam)
 	memset(arg, 0, sizeof(TeaITRACK_Params));
 	arg->isSetParams = 1;
 	Tch_Size_t _frame = { 480, 264 };
-	Tch_Rect_t tch = { 0, 58, WIDTH_STUTRACK_IMG_, 150 };//{0,75,480,150}
-	Tch_Rect_t blk = { 243, 18, 175, 38 }; //{0, 35, 640, 50}
-	Tch_Threshold_t threshold = { 2000, 1500, 90 };//{2000, 12000, 130}
+	Tch_Rect_t tch = { 44, 90, 383, 141 };//{0,75,480,150}
+	Tch_Rect_t blk = { 239, 50, 166, 42 }; //{0, 35, 640, 50}
+	Tch_Threshold_t threshold = { 2000, 2000, 75 };//{2000, 12000, 130}
 	arg->blk = blk;
 	arg->tch = tch;
 	arg->threshold = threshold;
-	arg->numOfPos = 10;
+	arg->numOfPos = 11;
 	arg->numOfSlide = 5;
 	arg->frame = _frame;
 	pDlg->tchData->sysData.callbackmsg_func = outputDebugFormat;
 	Tch_Result_t *res = (Tch_Result_t *)malloc(sizeof(Tch_Result_t));
 	memset(res, 0, sizeof(Tch_Result_t));
-
+	CString str;
 	int err = tch_Init(arg, pDlg->tchData);
-
+	int num,numTemp=0;
+	int cntOutside = 0, cntMultiple = 0;
+	double _stand = 0, _move = 0;
 	CPoint a, b, c, d;
 	pDlg->pOldPen = pDlg->pDC->SelectObject(&pDlg->penB);
 	//StuITRACK_Params *inst = (StuITRACK_Params *)malloc(sizeof(StuITRACK_Params));
@@ -717,6 +719,8 @@ DWORD WINAPI CitcVideoCaptureDlg::imageProcessThread(LPVOID pParam)
 
 	std::vector<cv::Point2f> inpt;
 	std::vector<cv::Point2f> outpt;
+	Analysis_Timer_t *ptr;
+	tch_switchAnalysis(pDlg->tchData);
 	//stuTrack_initializeTrack(inst, interior_params_p);
 	//unsigned int _time = gettime();
 	while (pDlg->m_process_flag)
@@ -728,6 +732,46 @@ DWORD WINAPI CitcVideoCaptureDlg::imageProcessThread(LPVOID pParam)
 			//stuTrack_process(inst, interior_params_p, return_params, (char*)imgData.data, (char*)(imgData.data + (inst->systemParams.nsrcHeight*inst->systemParams.nsrcWidth)));
 			
 			tch_track((uchar*)imgData.data, (uchar*)(imgData.data + (480 * 264)), arg, pDlg->tchData, res);
+			/*str.Format(_T("posIndex:%d\r\n"), pDlg->tchData->g_posIndex);
+			OutputDebugString(str);*/
+			
+			//打印站立和移动的时间
+			if (pDlg->tchData->analysis->standTimer.deltatime != _stand ||
+				pDlg->tchData->analysis->moveTimer.deltatime != _move ||
+				pDlg->tchData->analysis->cntOutside != cntOutside ||
+				pDlg->tchData->analysis->cntMultiple != cntMultiple)
+			{
+				str.Format(_T("stand: {%lf秒} , move: {%lf秒}\r\n"), pDlg->tchData->analysis->standTimer.deltatime/1000, pDlg->tchData->analysis->moveTimer.deltatime/1000);
+				OutputDebugString(str);
+				str.Format(_T("outside: %d次, multiple: %d次\r\n"),pDlg->tchData->analysis->cntOutside,pDlg->tchData->analysis->cntMultiple);
+				OutputDebugString(str);
+				_stand = pDlg->tchData->analysis->standTimer.deltatime;
+				_move = pDlg->tchData->analysis->moveTimer.deltatime;
+				cntOutside = pDlg->tchData->analysis->cntOutside;
+				cntMultiple = pDlg->tchData->analysis->cntMultiple;
+			}
+			//tch_switchAnalysis(pDlg->tchData);
+			//打印走下讲台的时间
+			/*num = pDlg->tchData->analysis->cntOutside;
+			if (num==1)
+			{
+				numTemp = 0;
+			}
+			
+			if (num>numTemp)
+			{
+				str.Format(_T("Count:%d\r\n"), num);
+				OutputDebugString(str);
+				ptr = pDlg->tchData->analysis->outTimer;
+				for (int i = 0; i < num; i++)
+				{
+					str.Format(_T("Time:{ %lf }"), ptr->deltatime);
+					OutputDebugString(str);
+					ptr = ptr->next;
+				}
+				OutputDebugString(_T("\r\n"));
+				numTemp = num;
+			}*/
 
 			/*a.x = pDlg->tchData->pos_slide.left * 48;  a.y = arg->tch.y;
 			b.x = (pDlg->tchData->pos_slide.right + 1) * 48;   b.y = arg->tch.y;
@@ -781,6 +825,7 @@ DWORD WINAPI CitcVideoCaptureDlg::imageProcessThread(LPVOID pParam)
 		}
 	}
 	pDlg->pDC->SelectObject(pDlg->pOldPen);
+	tch_switchAnalysis(pDlg->tchData);
 	//stuTrack_stopTrack(inst, interior_params_p);
 	tch_trackDestroy(pDlg->tchData);
 	return 0;
