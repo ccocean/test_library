@@ -200,9 +200,10 @@ int tch_trackInit(Tch_Data_t *data);//不用管
 
 int tch_calculateDirect_TCH(Itc_Mat_t* src, Track_Rect_t roi);//不用管
 
-int tch_switchAnalysis(Tch_Data_t *data);
+int tch_startAnalysis(Tch_Data_t *data);
 
-int tch_destroyAnalysis(Tch_Data_t *data);
+int tch_finishAnalysis(Tch_Data_t *data);
+
 
 
 #ifdef  __cplusplus  

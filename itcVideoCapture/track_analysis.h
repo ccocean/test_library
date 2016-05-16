@@ -30,6 +30,7 @@ extern "C" {
 
 	}Analysis_Timer_t;
 
+
 	typedef struct TrackAnalysis
 	{
 
@@ -46,13 +47,16 @@ extern "C" {
 	}Tch_Analysis_t;
 
 	//¾ßÌåº¯Êý
-	Tch_Analysis_t* track_analysisCreate(int type);
+	
+	
 	Analysis_Timer_t* track_timerInit();
 	Analysis_Timer_t * track_timerIncrease(Analysis_Timer_t *timer, int *count, Analysis_Timer_t *node);
+	int track_timerDestroy(Analysis_Timer_t **timer, int *count);
+
 	int track_timerStart(Analysis_Timer_t *timer);
 	int track_timerEnd(Analysis_Timer_t *timer);
 	int track_timerUpdate(Analysis_Timer_t *timer);
-	int track_timerDestroy(Analysis_Timer_t **timer, int *count);
+
 
 #ifdef  __cplusplus  
 }

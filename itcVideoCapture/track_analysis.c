@@ -8,28 +8,6 @@ Analysis_Timer_t* track_timerInit()
 	return timer;
 }
 
-Tch_Analysis_t* track_analysisCreate(int type)
-{
-	if (type==TEACHER)
-	{
-		Tch_Analysis_t* analysis = malloc(sizeof(Tch_Analysis_t));
-		if (analysis == NULL)
-		{
-			return NULL;
-		}
-		memset(analysis, 0, sizeof(Tch_Analysis_t));
-		memset(&analysis->standTimer, 0, sizeof(Analysis_Timer_t));
-		memset(&analysis->moveTimer, 0, sizeof(Analysis_Timer_t));
-		analysis->outTimer = NULL;
-		analysis->mlpTimer = NULL;
-		return analysis;
-	}
-	else
-	{
-
-	}
-}
-
 Analysis_Timer_t * track_timerIncrease(Analysis_Timer_t *head, int *count, Analysis_Timer_t *node)
 {
 	Analysis_Timer_t *temp = track_timerInit();

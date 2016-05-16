@@ -19,8 +19,26 @@ static int tch_noneTarget(Tch_Data_t *data, TeaITRACK_Params *params, Tch_Result
 static void tch_updatePosition(Tch_Data_t *data);
 static void tch_updateFeatureRect(Tch_Data_t *data);
 static void tch_updateTargetRcd(Tch_Data_t *data, int index, int type);
+static Tch_Analysis_t* track_analysisCreate();
+static int tch_destroyAnalysis(Tch_Analysis_t **analysis);
 
-int tch_destroyAnalysis(Tch_Analysis_t **analysis)
+static Tch_Analysis_t* track_analysisCreate()
+{
+		Tch_Analysis_t* analysis = malloc(sizeof(Tch_Analysis_t));
+		if (analysis == NULL)
+		{
+			return NULL;
+		}
+		memset(analysis, 0, sizeof(Tch_Analysis_t));
+		memset(&analysis->standTimer, 0, sizeof(Analysis_Timer_t));
+		memset(&analysis->moveTimer, 0, sizeof(Analysis_Timer_t));
+		analysis->outTimer = NULL;
+		analysis->mlpTimer = NULL;
+		return analysis;
+
+}
+
+static int tch_destroyAnalysis(Tch_Analysis_t **analysis)
 {
 	if (*analysis==NULL)
 	{
@@ -33,27 +51,29 @@ int tch_destroyAnalysis(Tch_Analysis_t **analysis)
 	return 0;
 }
 
-int tch_switchAnalysis(Tch_Data_t *data)
+int tch_startAnalysis(Tch_Data_t *data)
 {
 	if (data==NULL)
 	{
 		return -1;
 	}
-	if (data->isAnalysing==1)
-	{
-		data->isAnalysing = 0;
-		tch_destroyAnalysis(&data->analysis);
-		return data->isAnalysing;
-	}
-	else
-	{
-		tch_destroyAnalysis(&data->analysis);
-		data->isAnalysing = 1;
-		data->analysis = track_analysisCreate(TEACHER);
-		data->nodeOutside = track_timerInit();
-		data->nodeMultiple = track_timerInit();
-		return data->isAnalysing;
-	}
+	tch_destroyAnalysis(&data->analysis);
+	data->isAnalysing = 1;
+	data->analysis = track_analysisCreate();
+	data->nodeOutside = track_timerInit();
+	data->nodeMultiple = track_timerInit();
+	return data->isAnalysing;
+}
+
+int tch_finishAnalysis(Tch_Data_t *data)
+{
+	tch_destroyAnalysis(&data->analysis);
+	data->isAnalysing = 0;
+	int temp = 1;
+	track_timerDestroy(&data->nodeOutside, &temp);
+	temp = 1;
+	track_timerDestroy(&data->nodeMultiple, &temp);
+	return data->isAnalysing;
 }
 
 static void tchTrack_Copy_matData(Tch_Data_t* datas, itc_uchar* srcData)

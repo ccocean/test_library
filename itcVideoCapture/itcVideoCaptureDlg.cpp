@@ -719,8 +719,8 @@ DWORD WINAPI CitcVideoCaptureDlg::imageProcessThread(LPVOID pParam)
 
 	std::vector<cv::Point2f> inpt;
 	std::vector<cv::Point2f> outpt;
-	Analysis_Timer_t *ptr;
-	tch_switchAnalysis(pDlg->tchData);
+	Analysis_Timer_t *ptrOutside,*ptrMultiple;
+	tch_startAnalysis(pDlg->tchData);
 	//stuTrack_initializeTrack(inst, interior_params_p);
 	//unsigned int _time = gettime();
 	while (pDlg->m_process_flag)
@@ -749,8 +749,19 @@ DWORD WINAPI CitcVideoCaptureDlg::imageProcessThread(LPVOID pParam)
 				_move = pDlg->tchData->analysis->moveTimer.deltatime;
 				cntOutside = pDlg->tchData->analysis->cntOutside;
 				cntMultiple = pDlg->tchData->analysis->cntMultiple;
+				/*str.Format(_T("%d次下讲台持续时间："), cntOutside);
+				OutputDebugString(str);
+				for (int i = 0; i < cntOutside; i++)
+				{
+					if (i == cntOutside - 1)
+					{
+						str.Format(_T("%d秒\r\n"), cntOutside);
+					}
+				}*/
 			}
-			//tch_switchAnalysis(pDlg->tchData);
+			
+
+			//tch_finishAnalysis(pDlg->tchData);
 			//打印走下讲台的时间
 			/*num = pDlg->tchData->analysis->cntOutside;
 			if (num==1)
@@ -825,7 +836,7 @@ DWORD WINAPI CitcVideoCaptureDlg::imageProcessThread(LPVOID pParam)
 		}
 	}
 	pDlg->pDC->SelectObject(pDlg->pOldPen);
-	tch_switchAnalysis(pDlg->tchData);
+	tch_finishAnalysis(pDlg->tchData);
 	//stuTrack_stopTrack(inst, interior_params_p);
 	tch_trackDestroy(pDlg->tchData);
 	return 0;
