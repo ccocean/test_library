@@ -78,9 +78,6 @@
     <ClInclude Include="stuTrack_settings_parameter.h">
       <Filter>头文件</Filter>
     </ClInclude>
-    <ClInclude Include="stuTrack_track_img.h">
-      <Filter>头文件</Filter>
-    </ClInclude>
     <ClInclude Include="track_analysis.h">
       <Filter>头文件</Filter>
     </ClInclude>
@@ -111,9 +108,6 @@
       <Filter>源文件</Filter>
     </ClCompile>
     <ClCompile Include="tch_track.c">
-      <Filter>源文件</Filter>
-    </ClCompile>
-    <ClCompile Include="stuTrack_track_img.c">
       <Filter>源文件</Filter>
     </ClCompile>
     <ClCompile Include="itcTrack_draw_img.c">

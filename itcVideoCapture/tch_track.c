@@ -19,60 +19,59 @@ static int tch_noneTarget(Tch_Data_t *data, TeaITRACK_Params *params, Tch_Result
 static void tch_updatePosition(Tch_Data_t *data);
 static void tch_updateFeatureRect(Tch_Data_t *data);
 static void tch_updateTargetRcd(Tch_Data_t *data, int index, int type);
-static Tch_Analysis_t* track_analysisCreate();
-static int tch_destroyAnalysis(Tch_Analysis_t **analysis);
+static Tch_Analysis_t* track_statisticsCreate();
+static int tch_destroyStatistics(Tch_Analysis_t **analysis);
 
-static Tch_Analysis_t* track_analysisCreate()
+static Tch_Analysis_t* track_statisticsCreate()
 {
-		Tch_Analysis_t* analysis = malloc(sizeof(Tch_Analysis_t));
-		if (analysis == NULL)
-		{
-			return NULL;
-		}
-		memset(analysis, 0, sizeof(Tch_Analysis_t));
-		memset(&analysis->standTimer, 0, sizeof(Analysis_Timer_t));
-		memset(&analysis->moveTimer, 0, sizeof(Analysis_Timer_t));
-		analysis->outTimer = NULL;
-		analysis->mlpTimer = NULL;
-		return analysis;
-
+	Tch_Analysis_t* analysis = malloc(sizeof(Tch_Analysis_t));
+	if (analysis == NULL)
+	{
+		return NULL;
+	}
+	memset(analysis, 0, sizeof(Tch_Analysis_t));
+	//memset(&analysis->standTimer, 0, sizeof(Analysis_Timer_t));
+	//memset(&analysis->moveTimer, 0, sizeof(Analysis_Timer_t));
+	//memset(&analysis->outTimer, 0, sizeof(Statistics_Timer_t));
+	//memset(&analysis->mlpTimer, 0, sizeof(Statistics_Timer_t));
+	return analysis;
 }
 
-static int tch_destroyAnalysis(Tch_Analysis_t **analysis)
+static int tch_destroyStatistics(Tch_Analysis_t **analysis)
 {
 	if (*analysis==NULL)
 	{
 		return -1;
 	}
-	track_timerDestroy(&(*analysis)->outTimer, &(*analysis)->cntOutside);
-	track_timerDestroy(&(*analysis)->mlpTimer, &(*analysis)->cntMultiple);
+	//track_timerDestroy(&(*analysis)->outTimer);
+	//track_timerDestroy(&(*analysis)->mlpTimer);
 	free(*analysis);
 	*analysis = NULL;
 	return 0;
 }
 
-int tch_startAnalysis(Tch_Data_t *data)
+int tch_startStatistics(Tch_Data_t *data)
 {
 	if (data==NULL)
 	{
 		return -1;
 	}
-	tch_destroyAnalysis(&data->analysis);
+	tch_destroyStatistics(&data->analysis);
 	data->isAnalysing = 1;
-	data->analysis = track_analysisCreate();
-	data->nodeOutside = track_timerInit();
-	data->nodeMultiple = track_timerInit();
+	data->analysis = track_statisticsCreate();
+	track_timerStart(&data->analysis->deration);
+	memset(&data->nodeOutside, 0, sizeof(Analysis_Timer_node));
+	memset(&data->nodeMultiple, 0, sizeof(Analysis_Timer_node));
 	return data->isAnalysing;
 }
 
-int tch_finishAnalysis(Tch_Data_t *data)
+int tch_finishStatistics(Tch_Data_t *data)
 {
-	tch_destroyAnalysis(&data->analysis);
+	//tch_destroyStatistics(&data->analysis);
 	data->isAnalysing = 0;
-	int temp = 1;
-	track_timerDestroy(&data->nodeOutside, &temp);
-	temp = 1;
-	track_timerDestroy(&data->nodeMultiple, &temp);
+	track_timerEnd(&data->analysis->deration);
+	memset(&data->nodeOutside, 0, sizeof(Analysis_Timer_node));
+	memset(&data->nodeMultiple, 0, sizeof(Analysis_Timer_node));
 	return data->isAnalysing;
 }
 
@@ -205,11 +204,6 @@ int tch_trackInit(Tch_Data_t *data)
 	data->storageTch = itcCreateChildMemStorage(data->storage);
 	data->storageBlk = itcCreateChildMemStorage(data->storage);
 
-	/*data->isAnalysing = 1;
-	data->analysis = track_analysisCreate();
-	data->nodeOutside = track_timerInit();
-	data->nodeMultiple = track_timerInit();*/
-
 	return 0;
 }
 
@@ -302,18 +296,10 @@ static void tch_updateFeatureRect(Tch_Data_t *data)
 		{
 			if (data->g_posIndex == 0)//在最左端时维护时间
 			{
-				/*data->slideTimer.finish = gettime();
-				data->slideTimer.deltaTime += data->slideTimer.finish - data->slideTimer.start;
-				data->slideTimer.start = data->slideTimer.finish;*/
-				//TCH_PRINTF("updating time!!!!!\r\n");
 				tch_updateTimer(&data->g_lastTarget[0].timer,UPDATE);
 			}
 			else//否则更新时间
 			{
-				/*data->slideTimer.finish = 0;
-				data->slideTimer.deltaTime = 0;
-				data->slideTimer.start = gettime();*/
-				//TCH_PRINTF("reseting time!!!!!\r\n");
 				if (data->isAnalysing)
 				{
 					if (data->analysis->standTimer.start != 0)
@@ -371,10 +357,6 @@ static void tch_updateFeatureRect(Tch_Data_t *data)
 			data->pos_slide.left = data->pos_slide.center - data->pos_slide.width;
 			data->pos_slide.right = data->pos_slide.center + data->pos_slide.width;
 
-			/*data->slideTimer.finish = 0;
-			data->slideTimer.deltaTime = 0;
-			data->slideTimer.start = gettime();*/
-			//TCH_PRINTF("reseting time!!!!!\r\n");
 			if (data->isAnalysing)
 			{
 				if (data->analysis->standTimer.start != 0)
@@ -410,22 +392,19 @@ static void tch_updateFeatureRect(Tch_Data_t *data)
 			data->pos_slide.left = data->pos_slide.center - data->pos_slide.width;
 			data->pos_slide.right = data->pos_slide.center + data->pos_slide.width;
 		}
-		/*data->slideTimer.finish = 0;
-		data->slideTimer.deltaTime = 0;
-		data->slideTimer.start = gettime();*/
-		//TCH_PRINTF("reseting time!!!!!\r\n");
 		if (data->isAnalysing)
 		{
-			if (data->nodeOutside->start != 0 && data->nodeOutside->start != (ULINT)-1)
+			if (data->nodeOutside.start != 0 && data->nodeOutside.start != (ULINT)-1)
 			{
-				track_timerEnd(data->nodeOutside);
+				track_timerEnd(&data->nodeOutside);
 				/*if (data->analysis->cntOutside>=2)
 				{
 				track_timerDestroy(&data->analysis->outTimer, &data->analysis->cntOutside);
 				}*/
-				data->analysis->outTimer = track_timerIncrease(data->analysis->outTimer, &data->analysis->cntOutside, data->nodeOutside);
-				memset(data->nodeOutside, -1, sizeof(Analysis_Timer_t));
-				data->nodeOutside->deltatime = 0;
+				//data->analysis->outTimer = track_timerIncrease(data->analysis->outTimer, &data->nodeOutside);
+				track_statisticsIncrease(&data->analysis->outTimer, &data->nodeOutside);
+				memset(&data->nodeOutside, -1, sizeof(Analysis_Timer_t));
+				data->nodeOutside.deltatime = 0;
 			}
 			if (data->analysis->standTimer.start != 0)
 			{
@@ -442,10 +421,6 @@ static void tch_updateFeatureRect(Tch_Data_t *data)
 	}
 	else//在特写镜头范围内则维护时间
 	{
-		/*data->slideTimer.finish = gettime();
-		data->slideTimer.deltaTime += data->slideTimer.finish - data->slideTimer.start;
-		data->slideTimer.start = data->slideTimer.finish;*/
-		//TCH_PRINTF("updating time!!!!!\r\n");
 		tch_updateTimer(&data->g_lastTarget[0].timer, UPDATE);
 	}
 }
@@ -760,12 +735,11 @@ static int tch_noneTarget(Tch_Data_t *data, TeaITRACK_Params *params, Tch_Result
 	int isChange;
 	if (data->lastRectNum==0)
 	{
-		//track_timerInit(data->nodeOutside);
 		if (data->isAnalysing)
 		{
-			if (data->nodeOutside->start == (ULINT)-1)
+			if (data->nodeOutside.start == (ULINT)-1)
 			{
-				track_timerStart(data->nodeOutside);//分析
+				track_timerStart(&data->nodeOutside);//分析
 			}
 			if (data->analysis->standTimer.start != 0)
 			{
@@ -880,9 +854,9 @@ static int tch_noneTarget(Tch_Data_t *data, TeaITRACK_Params *params, Tch_Result
 		}
 		if (data->isAnalysing)
 		{
-			if (data->nodeMultiple->start == 0)
+			if (data->nodeMultiple.start == 0)
 			{
-				track_timerStart(data->nodeMultiple);
+				track_timerStart(&data->nodeMultiple);
 			}
 			if (data->analysis->standTimer.start != 0)
 			{
@@ -1014,9 +988,9 @@ static int tch_multipleTarget(Tch_Data_t *data, TeaITRACK_Params *params, Tch_Re
 	}
 	if (data->isAnalysing)
 	{
-		if (data->nodeMultiple->start == 0)
+		if (data->nodeMultiple.start == 0)
 		{
-			track_timerStart(data->nodeMultiple);
+			track_timerStart(&data->nodeMultiple);
 		}
 		if (data->analysis->standTimer.start != 0)
 		{
@@ -1027,9 +1001,6 @@ static int tch_multipleTarget(Tch_Data_t *data, TeaITRACK_Params *params, Tch_Re
 			track_timerEnd(&data->analysis->moveTimer);
 		}
 	}
-	
-	//track_timerUpdate(&data->analysis->standTimer);
-	//track_timerUpdate(&data->analysis->moveTimer);
 
 	res->status = RETURN_TRACK_TCH_MULITY;
 	isChange = (res->status != data->tch_lastStatus);
@@ -1055,12 +1026,14 @@ static int tch_singleTarget(Tch_Data_t *data, TeaITRACK_Params *params, Tch_Resu
 		//data->center = itcPoint(rectTch.x + (rectTch.width >> 1), rectTch.y + (rectTch.height >> 1));
 		if (data->isAnalysing)
 		{
-			if (data->nodeMultiple->start!=0)
+			if (data->nodeMultiple.start!=0)
 			{
-				track_timerEnd(data->nodeMultiple);
-				data->analysis->mlpTimer = track_timerIncrease(data->analysis->mlpTimer, &data->analysis->cntMultiple, data->nodeMultiple);
+				track_timerEnd(&data->nodeMultiple);
+				track_statisticsIncrease(&data->analysis->mlpTimer, &data->nodeMultiple);
+				//data->analysis->mlpTimer = track_timerIncrease(data->analysis->mlpTimer, &data->nodeMultiple);
 				//data->nodeMultiple = track_timerInit();
-				memset(data->nodeMultiple, 0, sizeof(Analysis_Timer_t));
+				memset(&data->nodeMultiple, 0, sizeof(Analysis_Timer_t));
+				data->nodeMultiple.deltatime = 0;
 			}
 		}
 		
@@ -1081,8 +1054,8 @@ static int tch_singleTarget(Tch_Data_t *data, TeaITRACK_Params *params, Tch_Resu
 
 		if (data->isAnalysing)
 		{
-			memset(data->nodeOutside, -1, sizeof(Analysis_Timer_t));
-			data->nodeOutside->deltatime = 0;
+			memset(&data->nodeOutside, -1, sizeof(Analysis_Timer_t));
+			data->nodeOutside.deltatime = 0;
 		}
 		
 		if ((data->g_lastTarget[0].timer.deltaTime) > params->threshold.stand)
@@ -1403,7 +1376,8 @@ void tch_trackDestroy(Tch_Data_t *data)
 		itc_release_mat(&data->prevMatBlk);
 		itc_release_mat(&data->mhiMatBlk);
 		itc_release_mat(&data->maskMatBlk);
-
+		tch_destroyStatistics(&data->analysis);
+		data->isAnalysing = 0;
 		free(data->cam_pos);
 		data->cam_pos = NULL;
 		//DestroyQueue(data->tch_queue);
@@ -1518,12 +1492,6 @@ int tch_Init(TeaITRACK_Params *params, Tch_Data_t *data)
 		data->numOfPos = params->numOfPos;
 		data->numOfSlide = params->numOfSlide;
 	}
-	/*else
-	{
-	track_standThreshold = params->threshold.stand;
-	track_targetAreaThreshold = params->threshold.targetArea;
-	track_tchOutsideThreshold = params->threshold.outside;
-	}*/
 	if (tch_trackInit(data)<0)
 	{
 		return -1;

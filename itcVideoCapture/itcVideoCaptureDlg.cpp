@@ -664,7 +664,7 @@ DWORD WINAPI CitcVideoCaptureDlg::imageProcessThread(LPVOID pParam)
 	Tch_Size_t _frame = { 480, 264 };
 	Tch_Rect_t tch = { 44, 90, 383, 141 };//{0,75,480,150}
 	Tch_Rect_t blk = { 239, 50, 166, 42 }; //{0, 35, 640, 50}
-	Tch_Threshold_t threshold = { 2000, 2000, 75 };//{2000, 12000, 130}
+	Tch_Threshold_t threshold = { 2000, 3000, 75 };//{2000, 12000, 130}
 	arg->blk = blk;
 	arg->tch = tch;
 	arg->threshold = threshold;
@@ -720,7 +720,7 @@ DWORD WINAPI CitcVideoCaptureDlg::imageProcessThread(LPVOID pParam)
 	std::vector<cv::Point2f> inpt;
 	std::vector<cv::Point2f> outpt;
 	Analysis_Timer_t *ptrOutside,*ptrMultiple;
-	tch_startAnalysis(pDlg->tchData);
+	tch_startStatistics(pDlg->tchData);
 	//stuTrack_initializeTrack(inst, interior_params_p);
 	//unsigned int _time = gettime();
 	while (pDlg->m_process_flag)
@@ -738,17 +738,17 @@ DWORD WINAPI CitcVideoCaptureDlg::imageProcessThread(LPVOID pParam)
 			//打印站立和移动的时间
 			if (pDlg->tchData->analysis->standTimer.deltatime != _stand ||
 				pDlg->tchData->analysis->moveTimer.deltatime != _move ||
-				pDlg->tchData->analysis->cntOutside != cntOutside ||
-				pDlg->tchData->analysis->cntMultiple != cntMultiple)
+				track_statisticGetCount(&pDlg->tchData->analysis->outTimer) != cntOutside ||
+				track_statisticGetCount(&pDlg->tchData->analysis->mlpTimer) != cntMultiple)
 			{
 				str.Format(_T("stand: {%lf秒} , move: {%lf秒}\r\n"), pDlg->tchData->analysis->standTimer.deltatime/1000, pDlg->tchData->analysis->moveTimer.deltatime/1000);
 				OutputDebugString(str);
-				str.Format(_T("outside: %d次, multiple: %d次\r\n"),pDlg->tchData->analysis->cntOutside,pDlg->tchData->analysis->cntMultiple);
-				OutputDebugString(str);
+				/*str.Format(_T("outside: %d次, multiple: %d次\r\n"), track_timerGetCount(pDlg->tchData->analysis->outTimer), track_timerGetCount(pDlg->tchData->analysis->mlpTimer));
+				OutputDebugString(str);*/
 				_stand = pDlg->tchData->analysis->standTimer.deltatime;
 				_move = pDlg->tchData->analysis->moveTimer.deltatime;
-				cntOutside = pDlg->tchData->analysis->cntOutside;
-				cntMultiple = pDlg->tchData->analysis->cntMultiple;
+				cntOutside = track_statisticGetCount(&pDlg->tchData->analysis->outTimer);
+				cntMultiple = track_statisticGetCount(&pDlg->tchData->analysis->mlpTimer);
 				/*str.Format(_T("%d次下讲台持续时间："), cntOutside);
 				OutputDebugString(str);
 				for (int i = 0; i < cntOutside; i++)
@@ -758,9 +758,18 @@ DWORD WINAPI CitcVideoCaptureDlg::imageProcessThread(LPVOID pParam)
 						str.Format(_T("%d秒\r\n"), cntOutside);
 					}
 				}*/
+				if (cntOutside>0)
+				{
+					str.Format(_T("走下讲台一共%d次，总时间为： %lf秒\r\n"), cntOutside, pDlg->tchData->analysis->outTimer.timer.deltatime/1000);
+					OutputDebugString(str);
+				}
+				if (cntMultiple>0)
+				{
+					str.Format(_T("多目标一共%d次，总时间为： %lf秒\r\n"), cntMultiple, pDlg->tchData->analysis->mlpTimer.timer.deltatime / 1000);
+					OutputDebugString(str);
+				}
 			}
 			
-
 			//tch_finishAnalysis(pDlg->tchData);
 			//打印走下讲台的时间
 			/*num = pDlg->tchData->analysis->cntOutside;
@@ -783,7 +792,6 @@ DWORD WINAPI CitcVideoCaptureDlg::imageProcessThread(LPVOID pParam)
 				OutputDebugString(_T("\r\n"));
 				numTemp = num;
 			}*/
-
 			/*a.x = pDlg->tchData->pos_slide.left * 48;  a.y = arg->tch.y;
 			b.x = (pDlg->tchData->pos_slide.right + 1) * 48;   b.y = arg->tch.y;
 			c.x = (pDlg->tchData->pos_slide.right + 1) * 48;   c.y = arg->tch.y + arg->tch.height;
@@ -836,7 +844,8 @@ DWORD WINAPI CitcVideoCaptureDlg::imageProcessThread(LPVOID pParam)
 		}
 	}
 	pDlg->pDC->SelectObject(pDlg->pOldPen);
-	tch_finishAnalysis(pDlg->tchData);
+	tch_finishStatistics(pDlg->tchData);
+	//tch_startStatistics(pDlg->tchData);
 	//stuTrack_stopTrack(inst, interior_params_p);
 	tch_trackDestroy(pDlg->tchData);
 	return 0;

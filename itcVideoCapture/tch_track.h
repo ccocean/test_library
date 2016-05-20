@@ -148,8 +148,8 @@ typedef struct Data
 	//分析参数
 	int isAnalysing;	//是否开启分析1为开启，0为关闭
 	Tch_Analysis_t *analysis;
-	Analysis_Timer_t *nodeOutside;
-	Analysis_Timer_t *nodeMultiple;
+	Analysis_Timer_node nodeOutside;
+	Analysis_Timer_node nodeMultiple;
 
 	Track_MemStorage_t *storage;
 	Track_MemStorage_t *storageTch;
@@ -200,9 +200,9 @@ int tch_trackInit(Tch_Data_t *data);//不用管
 
 int tch_calculateDirect_TCH(Itc_Mat_t* src, Track_Rect_t roi);//不用管
 
-int tch_startAnalysis(Tch_Data_t *data);
+int tch_startStatistics(Tch_Data_t *data);
 
-int tch_finishAnalysis(Tch_Data_t *data);
+int tch_finishStatistics(Tch_Data_t *data);
 
 
 
