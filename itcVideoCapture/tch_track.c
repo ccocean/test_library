@@ -21,6 +21,67 @@ static void tch_updateFeatureRect(Tch_Data_t *data);
 static void tch_updateTargetRcd(Tch_Data_t *data, int index, int type);
 static Tch_Analysis_t* track_statisticsCreate();
 static int tch_destroyStatistics(Tch_Analysis_t **analysis);
+static int tch_startStatistics(Tch_Data_t *data);
+static int tch_pauseStatistics(Tch_Data_t *data);
+static int tch_finishStatistics(Tch_Data_t *data);
+
+Tch_Analysis_t * tch_statisticsSwitch(Tch_Data_t *data, AlgLink_Record_Status_t * status)
+{
+	if (data==NULL||status==NULL)
+	{
+		return NULL;
+	}
+	if (status->recordstatus==TCH_RECORD)
+	{
+		if (!data->isPause)
+		{
+			tch_startStatistics(data);
+			return NULL;
+		}
+		else
+		{
+			tch_pauseStatistics(data);
+			return NULL;
+		}
+	}
+	else if (status->recordstatus==TCH_STOP)
+	{
+		tch_finishStatistics(data);
+		return data->analysis;
+	}
+	else if (status->recordstatus==TCH_PAUSE)
+	{
+		if (!data->isPause)
+		{
+			tch_pauseStatistics(data);
+			return NULL;
+		}
+		else
+		{
+			return NULL;
+		}
+	}
+	else
+	{
+		return NULL;
+	}
+}
+
+static int tch_pauseStatistics(Tch_Data_t *data)
+{
+	if (data->isPause)
+	{
+		data->isAnalysing = 1;
+		data->isPause = 0;
+		return 0;
+	}
+	else
+	{
+		data->isPause = 1;
+		data->isAnalysing = 0;
+		return 0;
+	}
+}
 
 static Tch_Analysis_t* track_statisticsCreate()
 {
@@ -185,7 +246,6 @@ int tch_trackInit(Tch_Data_t *data)
 	}
 	
 	ptr = NULL;
-
 	//data->srcMat = itc_create_mat(data->g_frameSize.height, data->g_frameSize.width, ITC_8UC1);
 
 	data->prevMatTch = itc_create_mat(data->g_anaWin.height, data->g_anaWin.width, ITC_8UC1);
@@ -403,7 +463,7 @@ static void tch_updateFeatureRect(Tch_Data_t *data)
 				}*/
 				//data->analysis->outTimer = track_timerIncrease(data->analysis->outTimer, &data->nodeOutside);
 				track_statisticsIncrease(&data->analysis->outTimer, &data->nodeOutside);
-				memset(&data->nodeOutside, -1, sizeof(Analysis_Timer_t));
+				memset(&data->nodeOutside, -1, sizeof(Analysis_Timer_node));
 				data->nodeOutside.deltatime = 0;
 			}
 			if (data->analysis->standTimer.start != 0)
@@ -1032,7 +1092,7 @@ static int tch_singleTarget(Tch_Data_t *data, TeaITRACK_Params *params, Tch_Resu
 				track_statisticsIncrease(&data->analysis->mlpTimer, &data->nodeMultiple);
 				//data->analysis->mlpTimer = track_timerIncrease(data->analysis->mlpTimer, &data->nodeMultiple);
 				//data->nodeMultiple = track_timerInit();
-				memset(&data->nodeMultiple, 0, sizeof(Analysis_Timer_t));
+				memset(&data->nodeMultiple, 0, sizeof(Analysis_Timer_node));
 				data->nodeMultiple.deltatime = 0;
 			}
 		}
@@ -1054,7 +1114,7 @@ static int tch_singleTarget(Tch_Data_t *data, TeaITRACK_Params *params, Tch_Resu
 
 		if (data->isAnalysing)
 		{
-			memset(&data->nodeOutside, -1, sizeof(Analysis_Timer_t));
+			memset(&data->nodeOutside, -1, sizeof(Analysis_Timer_node));
 			data->nodeOutside.deltatime = 0;
 		}
 		
@@ -1496,6 +1556,8 @@ int tch_Init(TeaITRACK_Params *params, Tch_Data_t *data)
 	{
 		return -1;
 	}
+
+	data->isPause = 0;//初始化录制状态
 
 	//初始化绘制颜色
 	data->pink_colour = colour_RGB2YUV(255, 0, 255);	/*粉红*/

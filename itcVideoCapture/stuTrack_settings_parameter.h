@@ -65,6 +65,14 @@ typedef struct _StuITRACK_OutParams
 }StuITRACK_OutParams_t;
 //-----------------------------------------------------------------------
 
+typedef struct TrackAnalysis1
+{
+	int standUpCount;
+	int standUpTimer;
+	int standUpMaxTimer;
+	int standUpMinTimer;
+	int moveCount;
+}Stu_Analysis_t;
 #ifdef  __cplusplus  
 }
 #endif  /* end of __cplusplus */ 

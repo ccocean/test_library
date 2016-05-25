@@ -6,6 +6,7 @@
 #include "itcTrack_draw_img.h"
 #include "Tch_Queue.h"
 #include "track_analysis.h"
+//#include "stutrackLink.h"
 #include<time.h>
 
 #ifdef  __cplusplus
@@ -27,6 +28,10 @@ extern "C" {
 //是否返回
 #define TRACK_TRUE 1
 #define TRACK_FALSE -1
+
+#define TCH_RECORD 1
+#define TCH_PAUSE 2
+#define TCH_STOP 3
 
 //定义默认参数
 #define TRACK_SLIDE_WIDTH 5
@@ -146,6 +151,7 @@ typedef struct Data
 	Itc_Mat_t *maskMatBlk;
 
 	//分析参数
+	int isPause;
 	int isAnalysing;	//是否开启分析1为开启，0为关闭
 	Tch_Analysis_t *analysis;
 	Analysis_Timer_node nodeOutside;
@@ -200,9 +206,9 @@ int tch_trackInit(Tch_Data_t *data);//不用管
 
 int tch_calculateDirect_TCH(Itc_Mat_t* src, Track_Rect_t roi);//不用管
 
-int tch_startStatistics(Tch_Data_t *data);
+Tch_Analysis_t * tch_statisticsSwitch(Tch_Data_t *data, AlgLink_Record_Status_t * status);
 
-int tch_finishStatistics(Tch_Data_t *data);
+
 
 
 

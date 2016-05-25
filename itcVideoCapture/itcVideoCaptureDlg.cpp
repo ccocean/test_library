@@ -719,8 +719,12 @@ DWORD WINAPI CitcVideoCaptureDlg::imageProcessThread(LPVOID pParam)
 
 	std::vector<cv::Point2f> inpt;
 	std::vector<cv::Point2f> outpt;
-	Analysis_Timer_t *ptrOutside,*ptrMultiple;
-	tch_startStatistics(pDlg->tchData);
+	AlgLink_Record_Status_t rcdStatus;
+	memset(&rcdStatus, 0, sizeof(AlgLink_Record_Status_t));
+	rcdStatus.recordstatus = 1;
+	tch_statisticsSwitch(pDlg->tchData, &rcdStatus);
+	//Analysis_Timer_t *ptrOutside,*ptrMultiple;
+	//tch_startStatistics(pDlg->tchData);
 	//stuTrack_initializeTrack(inst, interior_params_p);
 	//unsigned int _time = gettime();
 	while (pDlg->m_process_flag)
@@ -741,7 +745,7 @@ DWORD WINAPI CitcVideoCaptureDlg::imageProcessThread(LPVOID pParam)
 				track_statisticGetCount(&pDlg->tchData->analysis->outTimer) != cntOutside ||
 				track_statisticGetCount(&pDlg->tchData->analysis->mlpTimer) != cntMultiple)
 			{
-				str.Format(_T("stand: {%lf秒} , move: {%lf秒}\r\n"), pDlg->tchData->analysis->standTimer.deltatime/1000, pDlg->tchData->analysis->moveTimer.deltatime/1000);
+				str.Format(_T("stand: {%lf秒} , move: {%lf秒}\r\n"), (double)(pDlg->tchData->analysis->standTimer.deltatime / 1000), (double)(pDlg->tchData->analysis->moveTimer.deltatime / 1000));
 				OutputDebugString(str);
 				/*str.Format(_T("outside: %d次, multiple: %d次\r\n"), track_timerGetCount(pDlg->tchData->analysis->outTimer), track_timerGetCount(pDlg->tchData->analysis->mlpTimer));
 				OutputDebugString(str);*/
@@ -760,12 +764,12 @@ DWORD WINAPI CitcVideoCaptureDlg::imageProcessThread(LPVOID pParam)
 				}*/
 				if (cntOutside>0)
 				{
-					str.Format(_T("走下讲台一共%d次，总时间为： %lf秒\r\n"), cntOutside, pDlg->tchData->analysis->outTimer.timer.deltatime/1000);
+					str.Format(_T("走下讲台一共%d次，总时间为： %lf秒\r\n"), cntOutside, (double)(pDlg->tchData->analysis->outTimer.deltatime/1000));
 					OutputDebugString(str);
 				}
 				if (cntMultiple>0)
 				{
-					str.Format(_T("多目标一共%d次，总时间为： %lf秒\r\n"), cntMultiple, pDlg->tchData->analysis->mlpTimer.timer.deltatime / 1000);
+					str.Format(_T("多目标一共%d次，总时间为： %lf秒\r\n"), cntMultiple, (double)(pDlg->tchData->analysis->mlpTimer.deltatime / 1000));
 					OutputDebugString(str);
 				}
 			}
@@ -844,7 +848,9 @@ DWORD WINAPI CitcVideoCaptureDlg::imageProcessThread(LPVOID pParam)
 		}
 	}
 	pDlg->pDC->SelectObject(pDlg->pOldPen);
-	tch_finishStatistics(pDlg->tchData);
+	rcdStatus.recordstatus = 3;
+	tch_statisticsSwitch(pDlg->tchData, &rcdStatus);
+	//tch_finishStatistics(pDlg->tchData);
 	//tch_startStatistics(pDlg->tchData);
 	//stuTrack_stopTrack(inst, interior_params_p);
 	tch_trackDestroy(pDlg->tchData);

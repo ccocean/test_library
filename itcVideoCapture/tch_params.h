@@ -42,4 +42,47 @@ typedef struct 	_TeaITRACK_Params
 
 }TeaITRACK_Params;
 
+typedef unsigned long ULINT;
+
+typedef struct AnalysisTimerN
+{
+	ULINT start;
+
+	ULINT end;
+
+	int deltatime;
+
+	//struct AnalysisTimerN* next;
+
+}Analysis_Timer_node;
+
+/*typedef struct AnalysisTimer
+{
+int count;
+Analysis_Timer_node* head;
+Analysis_Timer_node* tail;
+}Analysis_Timer_t;*/
+
+typedef struct StatisticsTimer
+{
+	int count;
+	int deltatime;
+}Statistics_Timer_t;
+
+typedef struct TrackAnalysis
+{
+	Analysis_Timer_node deration;
+
+	Analysis_Timer_node standTimer;//站立时间
+
+	Analysis_Timer_node moveTimer;//移动时间
+
+	//int cntOutside;//下讲台次数
+	Statistics_Timer_t outTimer;//下讲台时间
+
+	//int cntMultiple;//多目标次数
+	Statistics_Timer_t mlpTimer;//多目标时间
+
+}Tch_Analysis_t;
+
 #endif
