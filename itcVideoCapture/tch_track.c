@@ -129,6 +129,28 @@ int tch_startStatistics(Tch_Data_t *data)
 int tch_finishStatistics(Tch_Data_t *data)
 {
 	//tch_destroyStatistics(&data->analysis);
+	if (data->analysis->standTimer.start>0)
+	{
+		track_timerEnd(&data->analysis->standTimer);
+	}
+	if (data->analysis->moveTimer.start > 0)
+	{
+		track_timerEnd(&data->analysis->moveTimer);
+	}
+	if (data->nodeOutside.start != (ULINT)(-1))
+	{
+		track_timerEnd(&data->nodeOutside);
+		if (data->nodeOutside.deltatime>0)
+		{
+			track_statisticsIncrease(&data->analysis->outTimer, &data->nodeOutside);
+		}
+		
+	}
+	if (data->nodeMultiple.start > 0)
+	{
+		track_timerEnd(&data->nodeMultiple);
+		track_statisticsIncrease(&data->analysis->mlpTimer, &data->nodeMultiple);
+	}
 	data->isAnalysing = 0;
 	track_timerEnd(&data->analysis->deration);
 	memset(&data->nodeOutside, 0, sizeof(Analysis_Timer_node));
@@ -200,8 +222,8 @@ int tch_trackInit(Tch_Data_t *data)
 	//tch_pos = &g_posIndex;
 
 	data->g_isMulti = 0;
-	data->g_isOnStage = 0;
 	data->g_count = 0;
+	data->g_isBlk = 0;
 
 	data->lastRectNum = 0;
 
@@ -462,7 +484,11 @@ static void tch_updateFeatureRect(Tch_Data_t *data)
 				track_timerDestroy(&data->analysis->outTimer, &data->analysis->cntOutside);
 				}*/
 				//data->analysis->outTimer = track_timerIncrease(data->analysis->outTimer, &data->nodeOutside);
-				track_statisticsIncrease(&data->analysis->outTimer, &data->nodeOutside);
+				if (data->nodeOutside.deltatime>0)
+				{
+					track_statisticsIncrease(&data->analysis->outTimer, &data->nodeOutside);
+				}
+				
 				memset(&data->nodeOutside, -1, sizeof(Analysis_Timer_node));
 				data->nodeOutside.deltatime = 0;
 			}
@@ -792,7 +818,7 @@ static void tch_updateTargetRcd(Tch_Data_t *data, int index, int type)
 
 static int tch_noneTarget(Tch_Data_t *data, TeaITRACK_Params *params, Tch_Result_t *res, itc_uchar *src, itc_uchar* pUV)
 {
-	int isChange;
+	int isChange = 0;
 	if (data->lastRectNum==0)
 	{
 		if (data->isAnalysing)
@@ -811,19 +837,23 @@ static int tch_noneTarget(Tch_Data_t *data, TeaITRACK_Params *params, Tch_Result
 			}
 		}
 		
-		res->status = RETURN_TRACK_TCH_OUTSIDE;
-		isChange = (res->status != data->tch_lastStatus);
-		data->tch_lastStatus = RETURN_TRACK_TCH_OUTSIDE;
-		data->slideTimer.deltaTime = 0;
-		data->slideTimer.start = 0;
-		data->pos_slide.center = -1;
-		data->pos_slide.left = -1;
-		data->pos_slide.right = -1;
-		res->pos = -1;
-		data->g_posIndex = -1;
-		data->g_prevPosIndex = -1;
-		isChange = tch_return_maintain(&data->tch_timer, isChange);
-		data->lastRectNum = 0;
+		if (!data->g_isBlk)
+		{
+			res->status = RETURN_TRACK_TCH_OUTSIDE;
+			isChange = (res->status != data->tch_lastStatus);
+			data->tch_lastStatus = RETURN_TRACK_TCH_OUTSIDE;
+			data->slideTimer.deltaTime = 0;
+			data->slideTimer.start = 0;
+			data->pos_slide.center = -1;
+			data->pos_slide.left = -1;
+			data->pos_slide.right = -1;
+			res->pos = -1;
+			data->g_posIndex = -1;
+			data->g_prevPosIndex = -1;
+			isChange = tch_return_maintain(&data->tch_timer, isChange);
+			data->lastRectNum = 0;
+		}
+		
 		return isChange;
 	}
 	if (data->lastRectNum==1)
@@ -856,12 +886,15 @@ static int tch_noneTarget(Tch_Data_t *data, TeaITRACK_Params *params, Tch_Result
 				}
 			}
 			
+			if (!data->g_isBlk)
+			{
+				res->status = RETURN_TRACK_TCH_MOVEINVIEW;
+				isChange = (res->status != data->tch_lastStatus);
+				data->tch_lastStatus = RETURN_TRACK_TCH_MOVEINVIEW;
+				res->pos = data->pos_slide.center + PRESET_ALIGN;
+				isChange = tch_return_maintain(&data->tch_timer, isChange);
+			}
 			
-			res->status = RETURN_TRACK_TCH_MOVEINVIEW;
-			isChange = (res->status != data->tch_lastStatus);
-			data->tch_lastStatus = RETURN_TRACK_TCH_MOVEINVIEW;
-			res->pos = data->pos_slide.center + PRESET_ALIGN;
-			isChange = tch_return_maintain(&data->tch_timer, isChange);
 			if (data->g_lastTarget[0].end > 0)
 			{
 				tchTrack_drawShow_imgData(data, src, pUV, &drawRect, &data->black_colour);
@@ -928,13 +961,17 @@ static int tch_noneTarget(Tch_Data_t *data, TeaITRACK_Params *params, Tch_Result
 			}
 		}
 		
-		res->status = RETURN_TRACK_TCH_MULITY;
-		isChange = (res->status != data->tch_lastStatus);
-		data->tch_lastStatus = RETURN_TRACK_TCH_MULITY;
-		res->pos = data->pos_slide.center + PRESET_ALIGN;
-		/*data->slideTimer.deltaTime = 0;
-		data->slideTimer.start = gettime();*/
-		isChange = tch_return_maintain(&data->tch_timer, isChange);
+		if (!data->g_isBlk)
+		{
+			res->status = RETURN_TRACK_TCH_MULITY;
+			isChange = (res->status != data->tch_lastStatus);
+			data->tch_lastStatus = RETURN_TRACK_TCH_MULITY;
+			res->pos = data->pos_slide.center + PRESET_ALIGN;
+			/*data->slideTimer.deltaTime = 0;
+			data->slideTimer.start = gettime();*/
+			isChange = tch_return_maintain(&data->tch_timer, isChange);
+		}
+		
 		return isChange;
 	}
 	//if (data->lastRectNum==0)
@@ -1028,7 +1065,7 @@ static int tch_multipleTarget(Tch_Data_t *data, TeaITRACK_Params *params, Tch_Re
 	Track_Rect_t drawRect;
 	
 	tch_updateFeatureRect(data);
-	int isChange;
+	int isChange = 0;
 	int i;
 	for (i = 0; i < data->lastRectNum; i++)
 	{
@@ -1062,13 +1099,17 @@ static int tch_multipleTarget(Tch_Data_t *data, TeaITRACK_Params *params, Tch_Re
 		}
 	}
 
-	res->status = RETURN_TRACK_TCH_MULITY;
-	isChange = (res->status != data->tch_lastStatus);
-	data->tch_lastStatus = RETURN_TRACK_TCH_MULITY;
-	res->pos = data->pos_slide.center + PRESET_ALIGN;
-	/*data->slideTimer.deltaTime = 0;
-	data->slideTimer.start = gettime();*/
-	isChange = tch_return_maintain(&data->tch_timer, isChange);
+	if (!data->g_isBlk)
+	{
+		res->status = RETURN_TRACK_TCH_MULITY;
+		isChange = (res->status != data->tch_lastStatus);
+		data->tch_lastStatus = RETURN_TRACK_TCH_MULITY;
+		res->pos = data->pos_slide.center + PRESET_ALIGN;
+		/*data->slideTimer.deltaTime = 0;
+		data->slideTimer.start = gettime();*/
+		isChange = tch_return_maintain(&data->tch_timer, isChange);
+	}
+	
 	return isChange;
 }
 
@@ -1076,7 +1117,7 @@ static int tch_singleTarget(Tch_Data_t *data, TeaITRACK_Params *params, Tch_Resu
 {
 	//获取运动方向
 	int direct = -1;
-	int isChange;
+	int isChange = 0;
 	float dx = 0, dy = 0;
 	Track_Rect_t rectTch = data->g_lastTarget[0].rect;
 	track_calculateDirect_ROI(data->mhiMatTch, rectTch, &direct, &dx, &dy);
@@ -1133,12 +1174,14 @@ static int tch_singleTarget(Tch_Data_t *data, TeaITRACK_Params *params, Tch_Resu
 				}
 			}
 			
-			
-			res->status = RETURN_TRACK_TCH_MOVEINVIEW;
-			isChange = (res->status != data->tch_lastStatus);
-			data->tch_lastStatus = RETURN_TRACK_TCH_MOVEINVIEW;
-			res->pos = data->pos_slide.center + PRESET_ALIGN;
-			isChange = tch_return_maintain(&data->tch_timer, isChange);
+			if (!data->g_isBlk)
+			{
+				res->status = RETURN_TRACK_TCH_MOVEINVIEW;
+				isChange = (res->status != data->tch_lastStatus);
+				data->tch_lastStatus = RETURN_TRACK_TCH_MOVEINVIEW;
+				res->pos = data->pos_slide.center + PRESET_ALIGN;
+				isChange = tch_return_maintain(&data->tch_timer, isChange);
+			}
 			if (data->g_lastTarget[0].end>0)
 			{
 				tchTrack_drawShow_imgData(data, src, pUV, &drawRect, &data->black_colour);
@@ -1152,11 +1195,14 @@ static int tch_singleTarget(Tch_Data_t *data, TeaITRACK_Params *params, Tch_Resu
 		}
 		else
 		{
-			res->status = RETURN_TRACK_TCH_MOVEOUTVIEW;
-			isChange = (res->status != data->tch_lastStatus);
-			data->tch_lastStatus = RETURN_TRACK_TCH_MOVEOUTVIEW;
-			res->pos = data->pos_slide.center + PRESET_ALIGN;
-			isChange = tch_return_maintain(&data->tch_timer, isChange);
+			if (!data->g_isBlk)
+			{
+				res->status = RETURN_TRACK_TCH_MOVEOUTVIEW;
+				isChange = (res->status != data->tch_lastStatus);
+				data->tch_lastStatus = RETURN_TRACK_TCH_MOVEOUTVIEW;
+				res->pos = data->pos_slide.center + PRESET_ALIGN;
+				isChange = tch_return_maintain(&data->tch_timer, isChange);
+			}
 			if (data->g_lastTarget[0].end > 0)
 			{
 				tchTrack_drawShow_imgData(data, src, pUV, &drawRect, &data->black_colour);
@@ -1287,12 +1333,7 @@ int tch_track(itc_uchar *src, itc_uchar* pUV, TeaITRACK_Params *params, Tch_Data
 		int blk_flag = tch_isBlackBoard(s_contourRectBlk, s_rectCnt, s_rectsBlk, s_bigRects, data, params, src, pUV);
 		if (blk_flag == TRACK_TRUE)
 		{
-			res->status = RETURN_TRACK_TCH_BLACKBOARD;
-			isChange = (res->status != data->tch_lastStatus);
-			data->tch_lastStatus = RETURN_TRACK_TCH_BLACKBOARD;
-			res->pos = data->pos_slide.center + PRESET_ALIGN;
-			isChange = tch_return_maintain(&data->tch_timer, isChange);
-
+			//data->g_isBlk = 1;//板书标识符打开
 			Track_Rect_t drawRect;
 
 			for (i = 0; i < data->lastRectNum; i++)
@@ -1304,11 +1345,41 @@ int tch_track(itc_uchar *src, itc_uchar* pUV, TeaITRACK_Params *params, Tch_Data
 				tch_updateTimer(&data->g_lastTarget[i].timer, UPDATE);
 				tchTrack_drawShow_imgData(data, src, pUV, &drawRect, &data->yellow_colour);
 			}
-			tch_matchRects(s_bigRects, s_rectCnt, data, params);
+			//if (s_rectCnt>0)//检测到运动目标的情况
+			//{
+			//	int tch_flag = tch_matchRects(s_bigRects, s_rectCnt, data, params);
+			//	if (tch_flag == TRACK_FALSE)
+			//	{
+			//		TCH_PRINTF("Data Error, can't match!\r\n");
+			//	}
+			//	tch_analyzeOutside(data, params);
+			//	if (data->lastRectNum == 1)
+			//	{
+			//		tch_singleTarget(data, params, res, src, pUV);
+			//	}
+			//	if (data->lastRectNum > 1)
+			//	{
+			//		tch_multipleTarget(data, params, res, src, pUV);
+			//	}
+			//	if (data->lastRectNum == 0)
+			//	{
+			//		tch_noneTarget(data, params, res, src, pUV);
+			//	}
+			//}
+			//else
+			//{
+			//	tch_noneTarget(data, params, res, src, pUV);
+			//}
+			res->status = RETURN_TRACK_TCH_BLACKBOARD;
+			isChange = (res->status != data->tch_lastStatus);
+			data->tch_lastStatus = RETURN_TRACK_TCH_BLACKBOARD;
+			res->pos = data->pos_slide.center + PRESET_ALIGN;
+			isChange = tch_return_maintain(&data->tch_timer, isChange);
 			return isChange;
 		}
 		else
 		{
+			data->g_isBlk = 0;//板书标识符打开
 			if (s_rectCnt>0)//检测到运动目标的情况
 			{
 				int tch_flag = tch_matchRects(s_bigRects, s_rectCnt, data,params);

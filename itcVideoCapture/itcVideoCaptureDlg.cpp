@@ -662,9 +662,9 @@ DWORD WINAPI CitcVideoCaptureDlg::imageProcessThread(LPVOID pParam)
 	memset(arg, 0, sizeof(TeaITRACK_Params));
 	arg->isSetParams = 1;
 	Tch_Size_t _frame = { 480, 264 };
-	Tch_Rect_t tch = { 44, 90, 383, 141 };//{0,75,480,150}
-	Tch_Rect_t blk = { 239, 50, 166, 42 }; //{0, 35, 640, 50}
-	Tch_Threshold_t threshold = { 2000, 3000, 75 };//{2000, 12000, 130}
+	Tch_Rect_t tch = { 31, 106, 410, 124 };//{0,75,480,150}
+	Tch_Rect_t blk = { 3, 4, 175, 53 }; //{0, 35, 640, 50}
+	Tch_Threshold_t threshold = { 2000, 3000, 70 };//{2000, 12000, 130}
 	arg->blk = blk;
 	arg->tch = tch;
 	arg->threshold = threshold;
@@ -850,6 +850,23 @@ DWORD WINAPI CitcVideoCaptureDlg::imageProcessThread(LPVOID pParam)
 	pDlg->pDC->SelectObject(pDlg->pOldPen);
 	rcdStatus.recordstatus = 3;
 	tch_statisticsSwitch(pDlg->tchData, &rcdStatus);
+	cntOutside = track_statisticGetCount(&pDlg->tchData->analysis->outTimer);
+	cntMultiple = track_statisticGetCount(&pDlg->tchData->analysis->mlpTimer);
+	OutputDebugString(_T("<--------------------------------------->\r\n"));
+	str.Format(_T("统计的总时间为： %lf秒\r\n"),(double)(pDlg->tchData->analysis->deration.deltatime / 1000));
+	OutputDebugString(str);
+	str.Format(_T("stand: {%lf秒} , move: {%lf秒}\r\n"), (double)(pDlg->tchData->analysis->standTimer.deltatime / 1000), (double)(pDlg->tchData->analysis->moveTimer.deltatime / 1000));
+	OutputDebugString(str);
+	if (cntOutside > 0)
+	{
+		str.Format(_T("走下讲台一共%d次，总时间为： %lf秒\r\n"), cntOutside, (double)(pDlg->tchData->analysis->outTimer.deltatime / 1000));
+		OutputDebugString(str);
+	}
+	if (cntMultiple > 0)
+	{
+		str.Format(_T("多目标一共%d次，总时间为： %lf秒\r\n"), cntMultiple, (double)(pDlg->tchData->analysis->mlpTimer.deltatime / 1000));
+		OutputDebugString(str);
+	}
 	//tch_finishStatistics(pDlg->tchData);
 	//tch_startStatistics(pDlg->tchData);
 	//stuTrack_stopTrack(inst, interior_params_p);

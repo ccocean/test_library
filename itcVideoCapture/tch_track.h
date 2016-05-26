@@ -112,8 +112,8 @@ typedef struct Data
 {
 	//ÅĞ¶¨ÆìÖÄ
 	int g_isMulti;
-	int g_isOnStage;
 	int g_count;
+	int g_isBlk;
 
 	int g_posIndex;
 	int g_prevPosIndex;
