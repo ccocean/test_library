@@ -664,13 +664,14 @@ DWORD WINAPI CitcVideoCaptureDlg::imageProcessThread(LPVOID pParam)
 	Tch_Size_t _frame = { 480, 264 };
 	Tch_Rect_t tch = { 31, 106, 410, 124 };//{0,75,480,150}
 	Tch_Rect_t blk = { 3, 4, 175, 53 }; //{0, 35, 640, 50}
-	Tch_Threshold_t threshold = { 2000, 3000, 70 };//{2000, 12000, 130}
+	Tch_Threshold_t threshold = { 2000, 3000, 65 };//{2000, 12000, 130}
 	arg->blk = blk;
 	arg->tch = tch;
 	arg->threshold = threshold;
 	arg->numOfPos = 11;
 	arg->numOfSlide = 5;
 	arg->frame = _frame;
+	arg->maxArea = 6.0;
 	pDlg->tchData->sysData.callbackmsg_func = outputDebugFormat;
 	Tch_Result_t *res = (Tch_Result_t *)malloc(sizeof(Tch_Result_t));
 	memset(res, 0, sizeof(Tch_Result_t));

@@ -35,6 +35,7 @@ typedef struct 	_TeaITRACK_Params
 	int isSetParams;
 	int numOfPos;
 	int numOfSlide;
+	float maxArea;//±ÈÀý
 	Tch_Size_t frame;
 	Tch_Rect_t tch;
 	Tch_Rect_t blk;

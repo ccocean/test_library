@@ -24,6 +24,7 @@ static int tch_destroyStatistics(Tch_Analysis_t **analysis);
 static int tch_startStatistics(Tch_Data_t *data);
 static int tch_pauseStatistics(Tch_Data_t *data);
 static int tch_finishStatistics(Tch_Data_t *data);
+static int tch_matchRects(Track_Rect_t *current, int num, Tch_Data_t *data, TeaITRACK_Params *params);
 
 Tch_Analysis_t * tch_statisticsSwitch(Tch_Data_t *data, AlgLink_Record_Status_t * status)
 {
@@ -71,8 +72,8 @@ static int tch_pauseStatistics(Tch_Data_t *data)
 {
 	if (data->isPause)
 	{
-		data->isAnalysing = 1;
 		data->isPause = 0;
+		data->isAnalysing = 1;
 		return 0;
 	}
 	else
@@ -530,6 +531,7 @@ static int tch_isBlackBoard(int numBlk, int numTch, Track_Rect_t *rectBlk, Track
 			drawRect.height = rectBlk[i].height;
 			tchTrack_drawShow_imgData(data, src, pUV, &drawRect, &data->green_colour);
 		}
+		tch_matchRects(rectTch, numTch, data, params);
 		if (1 == numTch && 1==data->lastRectNum)
 		{
 			//获取运动方向
@@ -753,7 +755,6 @@ static int tch_matchRects(Track_Rect_t *current, int num, Tch_Data_t *data, TeaI
 					data->g_lastTarget[data->lastRectNum].rect = current[j];
 					tch_updateTargetRcd(data, -1, ADD);
 				}
-				
 			}
 			
 		}
@@ -819,7 +820,7 @@ static void tch_updateTargetRcd(Tch_Data_t *data, int index, int type)
 static int tch_noneTarget(Tch_Data_t *data, TeaITRACK_Params *params, Tch_Result_t *res, itc_uchar *src, itc_uchar* pUV)
 {
 	int isChange = 0;
-	if (data->lastRectNum==0)
+	if (data->lastRectNum == 0)
 	{
 		if (data->isAnalysing)
 		{
@@ -1307,12 +1308,15 @@ int tch_track(itc_uchar *src, itc_uchar* pUV, TeaITRACK_Params *params, Tch_Data
 		track_find_contours(data->maskMatBlk, &contoursBlk, data->storageBlk);
 		s_contourRectBlk = track_filtrate_contours(&contoursBlk, 10, s_rectsBlk);
 		//Track_Rect_t drawRect;
-
+		int rectArea = 0;
+		int rectMaxArea = params->threshold.targetArea*params->maxArea;
 		for (i = 0; i < s_contourRectTch; i++)
 		{
-			if (params->threshold.targetArea<s_rectsTch[i].width*s_rectsTch[i].height)
+			rectArea = s_rectsTch[i].width*s_rectsTch[i].height;
+			if (params->threshold.targetArea<rectArea&&rectArea<rectMaxArea)
 			{
 				s_bigRects[s_rectCnt] = s_rectsTch[i];
+				//data->sysData.callbackmsg_func("------{第%d个面积的大小：%d}", i, s_rectsTch[i].width*s_rectsTch[i].height);
 				s_rectCnt++;
 			}
 		}
@@ -1370,6 +1374,7 @@ int tch_track(itc_uchar *src, itc_uchar* pUV, TeaITRACK_Params *params, Tch_Data
 			//{
 			//	tch_noneTarget(data, params, res, src, pUV);
 			//}
+			//tch_matchRects(s_bigRects, s_rectCnt, data, params);
 			res->status = RETURN_TRACK_TCH_BLACKBOARD;
 			isChange = (res->status != data->tch_lastStatus);
 			data->tch_lastStatus = RETURN_TRACK_TCH_BLACKBOARD;
@@ -1382,13 +1387,14 @@ int tch_track(itc_uchar *src, itc_uchar* pUV, TeaITRACK_Params *params, Tch_Data
 			data->g_isBlk = 0;//板书标识符打开
 			if (s_rectCnt>0)//检测到运动目标的情况
 			{
-				int tch_flag = tch_matchRects(s_bigRects, s_rectCnt, data,params);
+				int tch_flag = tch_matchRects(s_bigRects, s_rectCnt, data, params);
 				if (tch_flag == TRACK_FALSE)
 				{
 					TCH_PRINTF("Data Error, can't match!\r\n");
 					return -1;
 				}
 				tch_analyzeOutside(data, params);
+				//data->sysData.callbackmsg_func("当前个数：%d\r\n", data->lastRectNum);
 				if (data->lastRectNum == 1)
 				{
 					return tch_singleTarget(data, params, res, src, pUV);
