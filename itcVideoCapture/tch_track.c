@@ -1253,11 +1253,43 @@ static void tch_updatePosition(Tch_Data_t *data)
 	ptr = NULL;
 }
 
+int tch_refreshTarget(Tch_Data_t *data)
+{
+	if (data==NULL)
+	{
+		return -1;
+	}
+	if (data->lastRectNum<2)
+	{
+		return 0;
+	}
+	else
+	{
+		int i = 0;
+		for (i = 1; i < data->lastRectNum; i++)
+		{
+			data->g_lastTarget[i].start = 0;
+			data->g_lastTarget[i].end = 0;
+			data->g_lastTarget[i].timer.start = 0;
+			data->g_lastTarget[i].timer.finish = 0;
+			data->g_lastTarget[i].timer.deltaTime = 0;
+			data->g_lastTarget[i].rect.x = 0;
+			data->g_lastTarget[i].rect.y = 0;
+			data->g_lastTarget[i].rect.width = 0;
+			data->g_lastTarget[i].rect.height = 0;
+			data->g_lastTarget[i].o_start = 0;
+			data->g_lastTarget[i].o_width = 0;
+			data->g_lastTarget[i].o_x = 0;
+		}
+		data->lastRectNum = 1;
+		return 0;
+	}
+	
+}
 
 #define TRACK_OUTSIDE_TIME 5000
 int tch_track(itc_uchar *src, itc_uchar* pUV, TeaITRACK_Params *params, Tch_Data_t *data, Tch_Result_t *res)
 {
-
 	if (src==NULL || pUV==NULL|| params==NULL || data==NULL || res==NULL)
 	{
 		return -2;
@@ -1265,7 +1297,6 @@ int tch_track(itc_uchar *src, itc_uchar* pUV, TeaITRACK_Params *params, Tch_Data
 	res->pos = -1;
 	res->status = RETURN_TRACK_TCH_NULL;
 	int i = 0;
-
 
 	if (data->g_count>0)
 	{
@@ -1310,14 +1341,30 @@ int tch_track(itc_uchar *src, itc_uchar* pUV, TeaITRACK_Params *params, Tch_Data
 		//Track_Rect_t drawRect;
 		int rectArea = 0;
 		int rectMaxArea = params->threshold.targetArea*params->maxArea;
-		for (i = 0; i < s_contourRectTch; i++)
+		if (rectMaxArea<=params->threshold.targetArea)
 		{
-			rectArea = s_rectsTch[i].width*s_rectsTch[i].height;
-			if (params->threshold.targetArea<rectArea&&rectArea<rectMaxArea)
+			for (i = 0; i < s_contourRectTch; i++)
 			{
-				s_bigRects[s_rectCnt] = s_rectsTch[i];
-				//data->sysData.callbackmsg_func("------{第%d个面积的大小：%d}", i, s_rectsTch[i].width*s_rectsTch[i].height);
-				s_rectCnt++;
+				rectArea = s_rectsTch[i].width*s_rectsTch[i].height;
+				if (params->threshold.targetArea < rectArea)
+				{
+					s_bigRects[s_rectCnt] = s_rectsTch[i];
+					//data->sysData.callbackmsg_func("------{第%d个面积的大小：%d}", i, s_rectsTch[i].width*s_rectsTch[i].height);
+					s_rectCnt++;
+				}
+			}
+		}
+		else
+		{
+			for (i = 0; i < s_contourRectTch; i++)
+			{
+				rectArea = s_rectsTch[i].width*s_rectsTch[i].height;
+				if (params->threshold.targetArea < rectArea&&rectArea < rectMaxArea)
+				{
+					s_bigRects[s_rectCnt] = s_rectsTch[i];
+					//data->sysData.callbackmsg_func("------{第%d个面积的大小：%d}", i, s_rectsTch[i].width*s_rectsTch[i].height);
+					s_rectCnt++;
+				}
 			}
 		}
 

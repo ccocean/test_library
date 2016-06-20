@@ -206,6 +206,8 @@ int tch_trackInit(Tch_Data_t *data);//不用管
 
 int tch_calculateDirect_TCH(Itc_Mat_t* src, Track_Rect_t roi);//不用管
 
+int tch_refreshTarget(Tch_Data_t *data);
+
 Tch_Analysis_t * tch_statisticsSwitch(Tch_Data_t *data, AlgLink_Record_Status_t * status);
 
 

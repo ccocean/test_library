@@ -671,7 +671,7 @@ DWORD WINAPI CitcVideoCaptureDlg::imageProcessThread(LPVOID pParam)
 	arg->numOfPos = 11;
 	arg->numOfSlide = 5;
 	arg->frame = _frame;
-	arg->maxArea = 6.0;
+	arg->maxArea = 0.8;
 	pDlg->tchData->sysData.callbackmsg_func = outputDebugFormat;
 	Tch_Result_t *res = (Tch_Result_t *)malloc(sizeof(Tch_Result_t));
 	memset(res, 0, sizeof(Tch_Result_t));
